@@ -11,7 +11,10 @@
     "REDIS_URL",
     "JWT_SECRET",
     "NEXT_PUBLIC_API_URL",
-    "NEXT_PUBLIC_APP_URL"
+    "NEXT_PUBLIC_APP_URL",
+    "API_PORT",
+    "RESEND_API_KEY",
+    "RESEND_FROM_EMAIL"
   ],
   "tasks": {
     "build": {
