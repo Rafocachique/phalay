@@ -1,0 +1,44 @@
+{
+  "name": "phalay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PHALAY - Plataforma E-commerce SaaS de Moda Femenina",
+  "author": "PHALAY Team",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@phalay/web",
+    "dev:admin": "turbo run dev --filter=@phalay/admin",
+    "dev:api": "turbo run dev --filter=@phalay/api",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=@phalay/web",
+    "build:admin": "turbo run build --filter=@phalay/admin",
+    "build:api": "turbo run build --filter=@phalay/api",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean",
+    "db:generate": "pnpm --filter @phalay/database run db:generate",
+    "db:push": "pnpm --filter @phalay/database run db:push",
+    "db:migrate": "pnpm --filter @phalay/database run db:migrate",
+    "db:studio": "pnpm --filter @phalay/database run db:studio",
+    "db:seed": "pnpm --filter @phalay/database run db:seed",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml down",
+    "prepare": "echo 'Hooks listos'"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.3",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "rimraf": "^6.1.3",
+    "turbo": "^2.9.14"
+  }
+}

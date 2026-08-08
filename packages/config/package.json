@@ -1,0 +1,14 @@
+{
+  "name": "@phalay/config",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    "./tailwind": "./tailwind.config.ts",
+    "./typescript/base": "./tsconfig.base.json",
+    "./typescript/nextjs": "./tsconfig.nextjs.json"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.7.0"
+  }
+}

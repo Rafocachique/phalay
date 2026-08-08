@@ -1,0 +1,30 @@
+# =========================================
+# PHALAY - Docker Compose (Desarrollo)
+# Servicios: Redis
+# =========================================
+
+version: '3.9'
+
+services:
+  # ── Redis (Caché y Sesiones) ──
+  redis:
+    image: redis:7-alpine
+    container_name: phalay-redis
+    ports:
+      # Sólo expuesto en localhost: los contenedores de la app lo alcanzan
+      # por la red interna de docker-compose sin necesidad de publicarlo
+      # en todas las interfaces del host.
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD no está definido}
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:
+    driver: local

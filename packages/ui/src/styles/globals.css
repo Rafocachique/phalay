@@ -1,0 +1,83 @@
+/* =========================================
+   PHALAY DESIGN SYSTEM - EARTHY MINIMALISM
+   ========================================= */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@theme {
+  /* Colors - Earthy / Minimalist Luxury Palette */
+  --color-background: #F8F8F8;
+  --color-surface: #FFFFFF;
+  
+  --color-primary-100: #EBE6E0;
+  --color-primary-500: #8C7A6B; /* Warm taupe/brown */
+  --color-primary-600: #6B5A51;
+  --color-primary-700: #4A3E38;
+  --color-primary-900: #2B2421;
+
+  --color-accent-500: #C2A89A; /* Soft dusty rose/beige */
+  
+  --color-dark-900: #000000;
+  --color-dark-800: #111111;
+  --color-dark-500: #717171;
+  --color-dark-200: #EAEAEA;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif; /* For elegant headers */
+
+  /* Shadows - Subtle Luxury Elevation */
+  --shadow-premium: 0 4px 20px rgba(0,0,0,0.04);
+  --shadow-premium-hover: 0 10px 30px rgba(0,0,0,0.08);
+
+  /* Animations */
+  --animate-fade-up: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-fade-in: fadeIn 0.4s ease-out forwards;
+}
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-[var(--color-background)] font-sans text-dark-800 selection:bg-primary-100 selection:text-dark-900;
+  }
+}
+
+@layer components {
+  /* === BUTTONS SYSTEM === */
+  .btn-primary {
+    @apply bg-black text-white px-8 py-3 rounded-full font-medium transition-all duration-300 hover:bg-gray-800 hover:shadow-lg text-sm;
+  }
+
+  .btn-outline {
+    @apply border border-gray-300 text-dark-900 hover:border-black rounded-full px-8 py-3 font-medium transition-all duration-300 bg-white text-sm;
+  }
+
+  /* === CARDS === */
+  .card-premium {
+    @apply bg-white rounded-2xl p-6 border border-transparent hover:border-gray-100 hover:shadow-premium-hover transition-all duration-500;
+  }
+}
+
+@layer utilities {
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .animate-enter {
+    animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}

@@ -1,0 +1,58 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Builds
+.next/
+dist/
+.turbo/
+out/
+
+# Cache
+.cache/
+*.tsbuildinfo
+
+# Entorno - NUNCA commitear
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Docker
+docker-compose.override.yml
+
+# Prisma
+packages/database/prisma/migrations/
+
+# Supabase
+.supabase/
+
+# Archivos temporales
+tmp/
+temp/
+
+# Agentes de IA / Copilotos
+.agents/
+.claude/
+.gemini/
+skills-lock.json

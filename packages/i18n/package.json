@@ -1,0 +1,15 @@
+{
+  "name": "@phalay/i18n",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./messages/*": "./src/messages/*.json",
+    "./messages": "./src/messages"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
