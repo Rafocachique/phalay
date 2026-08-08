@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { LayoutDashboard, ShoppingBag, Layers, ClipboardList, Users, Palette, Scale, Wallet, Tag, ChevronDown, Settings, Info, Truck } from 'lucide-react';
+import { 
+  LayoutDashboard, ShoppingBag, Layers, ClipboardList, Users, 
+  Palette, Scale, Wallet, Tag, ChevronDown, Settings, Info, Truck, Menu, X 
+} from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
@@ -11,6 +14,12 @@ export default function AdminShell({ children, user }: { children: React.ReactNo
   const pathname = usePathname();
   const [isContentOpen, setIsContentOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Close sidebar on path changes (e.g. navigation in mobile view)
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
 
   const storeItems = [
     { name: 'Inicio', href: '/', icon: <LayoutDashboard size={18} strokeWidth={2.5} />, exact: true },
@@ -54,13 +63,52 @@ export default function AdminShell({ children, user }: { children: React.ReactNo
   const isAuthPage = pathname === '/login' || pathname === '/register';
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen w-full">
+    <div className="flex flex-col md:flex-row min-h-screen w-full relative">
+      {/* Mobile Header Bar */}
+      {!isAuthPage && (
+        <header className="flex md:hidden items-center justify-between px-6 py-4 bg-white border-b border-gray-200 sticky top-0 z-40 w-full shadow-sm">
+          <div>
+            <h2 className="text-xl font-black text-[#8B5A5A] tracking-tighter uppercase truncate">{storeName}</h2>
+            <p className="text-[9px] font-bold text-gray-500 tracking-widest uppercase mt-0.5">Admin</p>
+          </div>
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none"
+            aria-label="Toggle Menu"
+          >
+            {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </header>
+      )}
+
+      {/* Backdrop for Mobile Sidebar Drawer */}
+      {!isAuthPage && isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-45 md:hidden backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar Navigation */}
       {!isAuthPage && (
-        <aside className="w-full md:w-64 bg-white border-r border-gray-200 shrink-0 flex flex-col h-screen sticky top-0 shadow-sm">
-          <div className="p-6 pb-3 border-b border-gray-100">
-            <h2 className="text-2xl font-black text-[#8B5A5A] tracking-tighter uppercase truncate">{storeName}</h2>
-            <p className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mt-1">Panel de Administración</p>
+        <aside className={`
+          fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 shrink-0 flex flex-col h-screen z-50 shadow-xl md:shadow-sm
+          transform transition-transform duration-300 md:transform-none md:sticky md:top-0 md:z-auto
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}>
+          {/* Sidebar Header */}
+          <div className="p-6 pb-3 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-black text-[#8B5A5A] tracking-tighter uppercase truncate">{storeName}</h2>
+              <p className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mt-1">Panel de Administración</p>
+            </div>
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Close Menu"
+            >
+              <X size={20} />
+            </button>
           </div>
 
           <nav className="mt-4 px-4 flex-1 overflow-y-auto overflow-x-hidden pb-4 space-y-6">
