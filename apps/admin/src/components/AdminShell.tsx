@@ -6,9 +6,82 @@ import {
   Palette, Scale, Wallet, Tag, ChevronDown, Settings, Info, Truck, Menu, X 
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Toaster } from 'sonner';
 import { AdminLogoutButton } from '@/components/AdminLogoutButton';
+
+function UserProfileDropdown({ 
+  user, 
+  isProfileOpen, 
+  setIsProfileOpen, 
+  align = 'right',
+  isMobile = false
+}: { 
+  user: any; 
+  isProfileOpen: boolean; 
+  setIsProfileOpen: (open: boolean) => void; 
+  align?: 'left' | 'right';
+  isMobile?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [setIsProfileOpen]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button 
+        onClick={() => setIsProfileOpen(!isProfileOpen)}
+        className="flex items-center gap-2 px-2.5 py-1.5 rounded-full hover:bg-gray-100 transition-all border border-gray-150 bg-white shadow-sm"
+      >
+        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#8B5A5A] to-[#A87474] flex items-center justify-center text-white font-bold text-xs shadow-sm border border-white">
+          {user?.firstName?.charAt(0) || 'U'}{user?.lastName?.charAt(0) || ''}
+        </div>
+        {!isMobile && (
+          <div className="text-left hidden sm:block pr-1">
+            <p className="text-xs font-bold text-gray-900 leading-none">
+              {user?.firstName || 'Usuario'}
+            </p>
+            <p className="text-[9px] font-medium text-[#8B5A5A] mt-0.5">
+              {user?.role === 'SUPER_ADMIN' ? 'Super Administrador' : 'Administrador'}
+            </p>
+          </div>
+        )}
+        <ChevronDown size={14} className={`opacity-60 transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isProfileOpen && (
+        <div className={`
+          absolute mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50
+          ${align === 'right' ? 'right-0' : 'left-0'}
+        `}>
+          <div className="p-3.5 border-b border-gray-100 bg-gray-50/50">
+            <p className="text-xs font-bold text-gray-950 truncate">{user?.firstName} {user?.lastName}</p>
+            <p className="text-[10px] text-gray-500 truncate mt-0.5">{user?.email}</p>
+          </div>
+          <div className="p-1">
+            <Link 
+              href="/perfil" 
+              onClick={() => setIsProfileOpen(false)}
+              className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-[#FAE8E8]/60 hover:text-[#8B5A5A] rounded-lg transition-colors w-full"
+            >
+              <Settings size={14} /> Ajustes de Perfil
+            </Link>
+            <AdminLogoutButton />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminShell({ children, user }: { children: React.ReactNode, user?: any }) {
   const pathname = usePathname();
@@ -71,13 +144,16 @@ export default function AdminShell({ children, user }: { children: React.ReactNo
             <h2 className="text-xl font-black text-[#8B5A5A] tracking-tighter uppercase truncate">{storeName}</h2>
             <p className="text-[9px] font-bold text-gray-500 tracking-widest uppercase mt-0.5">Admin</p>
           </div>
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none"
-            aria-label="Toggle Menu"
-          >
-            {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          <div className="flex items-center gap-3">
+            <UserProfileDropdown user={user} isProfileOpen={isProfileOpen} setIsProfileOpen={setIsProfileOpen} align="right" isMobile />
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none"
+              aria-label="Toggle Menu"
+            >
+              {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </header>
       )}
 
@@ -111,7 +187,7 @@ export default function AdminShell({ children, user }: { children: React.ReactNo
             </button>
           </div>
 
-          <nav className="mt-4 px-4 flex-1 overflow-y-auto overflow-x-hidden pb-4 space-y-6">
+          <nav className="mt-4 px-4 flex-1 overflow-y-auto overflow-x-hidden pb-6 space-y-6">
             {/* Tienda Section */}
             <div>
               <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Administración</p>
@@ -192,56 +268,19 @@ export default function AdminShell({ children, user }: { children: React.ReactNo
               </div>
             </div>
           </nav>
-
-          {/* User Profile Section */}
-          <div className="p-4 border-t border-gray-100 space-y-3 mt-auto">
-            <div className="relative">
-              <button 
-                onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#FAE8E8] to-[#F5D9D9] rounded-lg hover:from-[#F5D9D9] hover:to-[#ECC9C9] transition-all"
-              >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#8B5A5A] to-[#A87474] overflow-hidden flex-shrink-0 border-2 border-white shadow-sm">
-                  <span className="w-full h-full flex items-center justify-center text-white font-bold text-sm">
-                    {user?.firstName?.charAt(0) || ''}{user?.lastName?.charAt(0) || ''}
-                  </span>
-                </div>
-                <div className="text-left flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">
-                    {user?.firstName || 'Usuario'} {user?.lastName || ''}
-                  </p>
-                  <p className="text-[11px] font-medium text-[#8B5A5A]">
-                    {user?.role === 'SUPER_ADMIN' ? 'Super Administrador' : 'Administrador'}
-                  </p>
-                </div>
-                <ChevronDown size={16} className={`flex-shrink-0 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {isProfileOpen && (
-                <div className="absolute bottom-full mb-2 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50">
-                  <div className="p-3 border-b border-gray-100">
-                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Sesión</p>
-                  </div>
-                  <Link href="/perfil" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors w-full border-b border-gray-50">
-                    <Settings size={16} /> Ajustes de Perfil
-                  </Link>
-                  <AdminLogoutButton />
-                </div>
-              )}
-            </div>
-
-            {/* Status Indicator */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-lg border border-green-200">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-xs font-semibold text-green-700">Sistema en línea</span>
-            </div>
-          </div>
         </aside>
       )}
 
       {/* Main Content Area */}
-      <main className={`flex-1 overflow-auto ${isAuthPage ? 'w-full' : ''}`}>
+      <main className={`flex-1 flex flex-col min-h-screen overflow-auto ${isAuthPage ? 'w-full' : ''}`}>
+        {/* Desktop Header bar containing the Profile Dropdown */}
+        {!isAuthPage && (
+          <header className="hidden md:flex items-center justify-end h-16 px-8 bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm shrink-0">
+            <UserProfileDropdown user={user} isProfileOpen={isProfileOpen} setIsProfileOpen={setIsProfileOpen} align="right" />
+          </header>
+        )}
         <Toaster position="top-center" richColors />
-        <div className={isAuthPage ? '' : 'p-4 sm:p-8 w-full'}>
+        <div className={isAuthPage ? '' : 'p-4 sm:p-8 w-full flex-1'}>
           {children}
         </div>
       </main>

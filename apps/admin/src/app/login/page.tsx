@@ -140,12 +140,6 @@ export default function AdminLoginPage() {
 
             <div className="mt-6 text-center text-xs text-gray-500 space-y-2">
               <p>
-                ¿No tienes cuenta de administrador?{' '}
-                <Link href="/register" className="text-[#8B5A5A] font-semibold hover:underline">
-                  Registrarse aquí
-                </Link>
-              </p>
-              <p>
                 <Link href="/" className="text-gray-400 hover:text-gray-600 font-medium transition-colors">
                   Volver al sitio de clientes
                 </Link>
