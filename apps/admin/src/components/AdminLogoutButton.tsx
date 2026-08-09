@@ -9,7 +9,13 @@ export function AdminLogoutButton() {
 
   const handleLogout = async () => {
     setIsLoading(true);
-    await adminLogout();
+    try {
+      await adminLogout();
+    } finally {
+      // Navegación dura: garantiza que se descarte la caché del router y que
+      // la clienta vea de verdad la pantalla de login.
+      window.location.href = '/login';
+    }
   };
 
   return (

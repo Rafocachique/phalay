@@ -24,7 +24,7 @@ export const ProductsService = {
     if (params?.category) searchParams.append('category', params.category);
 
     const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    return fetchApi<Product[]>(`/products${query}`);
+    return fetchApi<Product[]>(`/products${query}`, { cache: 'no-store' });
   },
 
   /**

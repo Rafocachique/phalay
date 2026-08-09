@@ -159,7 +159,11 @@ export async function adminLogout() {
   );
 
   await supabase.auth.signOut();
-  redirect('/login');
+
+  // Ojo: aquí NO se llama a redirect(). Cuando el server action redirige, el
+  // router del cliente a veces se queda en la misma pantalla y parece que el
+  // botón no hizo nada (aunque la sesión sí se cerró). La navegación la hace
+  // el botón con window.location, que además limpia la caché del router.
 }
 
 export async function adminRegister(_prevState: any, formData: FormData) {

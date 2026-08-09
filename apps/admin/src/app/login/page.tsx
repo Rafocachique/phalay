@@ -1,11 +1,13 @@
 'use client';
 
 import { adminLogin } from '@/app/auth/actions';
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import Link from 'next/link';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const [state, formAction, isPending] = useActionState(adminLogin, null);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F8F8F8] via-[#FDFCFC] to-[#F0EDED] flex items-center justify-center p-4 relative overflow-hidden">
@@ -113,14 +115,25 @@ export default function AdminLoginPage() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2.5">Contraseña</label>
-                <input
-                  type="password"
-                  name="password"
-                  required
-                  disabled={isPending}
-                  placeholder="••••••••"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#8B5A5A] focus:ring-2 focus:ring-[#8B5A5A]/10 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    required
+                    disabled={isPending}
+                    placeholder="••••••••"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-11 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#8B5A5A] focus:ring-2 focus:ring-[#8B5A5A]/10 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    disabled={isPending}
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-50"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <button

@@ -1,5 +1,8 @@
 import { notFound } from 'next/navigation';
 import EditarProductoForm from './EditarProductoForm';
+import { getCatalogOptions } from '@/lib/catalog-data';
+
+export const dynamic = 'force-dynamic';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -15,11 +18,18 @@ async function getProduct(id: string) {
 
 export default async function EditarProductoPage({ params }: { params: any }) {
   const { id } = await params;
-  const product = await getProduct(id);
+  const [product, catalog] = await Promise.all([getProduct(id), getCatalogOptions()]);
 
   if (!product) {
     notFound();
   }
 
-  return <EditarProductoForm product={product} />;
+  return (
+    <EditarProductoForm
+      product={product}
+      categories={catalog.categories}
+      collections={catalog.collections}
+      catalogFailed={catalog.failed}
+    />
+  );
 }

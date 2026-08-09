@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { 
-  Users, UserCheck, ToggleLeft, ToggleRight, 
-  Trash2, Edit, Plus, Search, X, Check, Copy, AlertCircle 
+import {
+  Users, UserCheck, ToggleLeft, ToggleRight,
+  Trash2, Edit, Plus, Search, X, Check, Copy, AlertCircle, Eye, EyeOff
 } from 'lucide-react';
 import { createUser, updateUser, deleteUser } from '../actions/users';
 
@@ -42,12 +42,14 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
     lastName: '',
     role: 'CUSTOMER' as 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN',
     status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED',
+    password: '',
   });
 
   // Loading states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdTempPassword, setCreatedTempPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showUserPassword, setShowUserPassword] = useState(false);
 
   // Filtering logic
   const filteredUsers = users.filter((u) => {
@@ -80,6 +82,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
         lastName: formData.lastName,
         role: formData.role,
         status: formData.status as any,
+        password: formData.password || undefined,
       });
 
       if (res.success && res.data) {
@@ -104,10 +107,12 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
     setIsSubmitting(true);
     try {
       const res = await updateUser(selectedUser.id, {
+        email: formData.email,
         firstName: formData.firstName,
         lastName: formData.lastName,
         role: formData.role,
         status: formData.status,
+        password: formData.password || undefined,
       });
 
       if (res.success && res.data) {
@@ -168,8 +173,10 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
       lastName: '',
       role: 'CUSTOMER',
       status: 'ACTIVE',
+      password: '',
     });
     setCreatedTempPassword(null);
+    setShowUserPassword(false);
     setIsCreateOpen(true);
   };
 
@@ -181,7 +188,9 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
       lastName: user.lastName,
       role: user.role,
       status: user.status as any,
+      password: '',
     });
+    setShowUserPassword(false);
     setIsEditOpen(true);
   };
 
@@ -223,7 +232,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
           className="w-full md:w-auto bg-[#8B5A5A] hover:bg-[#6A3F3F] text-white px-6 py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
         >
           <Plus size={20} />
-          Nuevo Miembro de Equipo
+          Nuevo Usuario
         </motion.button>
       </div>
 
@@ -383,7 +392,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
                 <X size={20} />
               </button>
 
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Crear Miembro de Equipo</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Crear Usuario</h3>
               <p className="text-gray-500 text-xs mb-6">Completa los campos para generar un nuevo perfil con acceso administrado.</p>
 
               {createdTempPassword ? (
@@ -474,6 +483,27 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#8B5A5A]"
                       placeholder="nombre@ejemplo.com"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Contraseña (Opcional - Dejar vacío para autogenerar)</label>
+                    <div className="relative">
+                      <input 
+                        type={showUserPassword ? 'text' : 'password'} 
+                        value={formData.password}
+                        onChange={(e) => setFormData({...formData, password: e.target.value})}
+                        className="w-full border border-gray-200 rounded-xl pl-3.5 pr-11 py-2.5 text-sm outline-none focus:border-[#8B5A5A]"
+                        placeholder="Mínimo 6 caracteres"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowUserPassword(!showUserPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+                      >
+                        {showUserPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -567,6 +597,18 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Correo Electrónico</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#8B5A5A]"
+                    placeholder="nombre@ejemplo.com"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Rol de Acceso</label>
@@ -593,6 +635,27 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
                     </select>
                   </div>
                 </div>
+
+                 <div>
+                   <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Nueva Contraseña (Opcional)</label>
+                   <div className="relative">
+                     <input 
+                       type={showUserPassword ? 'text' : 'password'} 
+                       value={formData.password}
+                       onChange={(e) => setFormData({...formData, password: e.target.value})}
+                       className="w-full border border-gray-200 rounded-xl pl-3.5 pr-11 py-2.5 text-sm outline-none focus:border-[#8B5A5A]"
+                       placeholder="Dejar vacío para mantener la actual"
+                     />
+                     <button
+                       type="button"
+                       tabIndex={-1}
+                       onClick={() => setShowUserPassword(!showUserPassword)}
+                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+                     >
+                       {showUserPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                     </button>
+                   </div>
+                 </div>
 
                 <button 
                   type="submit"

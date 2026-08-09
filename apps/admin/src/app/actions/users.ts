@@ -53,6 +53,7 @@ export async function createUser(data: {
   lastName: string;
   role: 'CUSTOMER' | 'SELLER' | 'ADMIN' | 'SUPER_ADMIN';
   status?: 'ACTIVE' | 'INACTIVE';
+  password?: string;
 }) {
   try {
     const authHeaders = await getAuthHeader();
@@ -82,10 +83,12 @@ export async function createUser(data: {
 }
 
 export async function updateUser(id: string, data: {
+  email?: string;
   role?: 'CUSTOMER' | 'SELLER' | 'ADMIN' | 'SUPER_ADMIN';
   status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   firstName?: string;
   lastName?: string;
+  password?: string;
 }) {
   try {
     const authHeaders = await getAuthHeader();

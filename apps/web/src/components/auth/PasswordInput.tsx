@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 
 interface PasswordInputProps {
@@ -13,27 +13,11 @@ interface PasswordInputProps {
 
 export default function PasswordInput({ name, placeholder, required, minLength, disabled }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // React no vuelve a aplicar el atributo `type` de un <input> en updates
-  // posteriores al montaje (sólo lo fija una vez, al crear el nodo). Por eso
-  // togglear el type vía prop declarativo no hace nada visualmente — hay que
-  // mutarlo directo en el DOM.
-  function toggle() {
-    setVisible((prev) => {
-      const next = !prev;
-      if (inputRef.current) {
-        inputRef.current.type = next ? 'text' : 'password';
-      }
-      return next;
-    });
-  }
 
   return (
     <div className="relative">
       <input
-        ref={inputRef}
-        type="password"
+        type={visible ? 'text' : 'password'}
         name={name}
         required={required}
         minLength={minLength}
@@ -43,7 +27,7 @@ export default function PasswordInput({ name, placeholder, required, minLength, 
       />
       <button
         type="button"
-        onClick={toggle}
+        onClick={() => setVisible(!visible)}
         tabIndex={-1}
         disabled={disabled}
         aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}

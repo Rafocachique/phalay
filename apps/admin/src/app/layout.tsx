@@ -34,14 +34,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     email: headersList.get('x-user-email'),
   };
 
+  // Sin h-full en <html>: junto al min-h-screen del body desbordaban los dos
+  // y el navegador dibujaba dos barras de scroll.
   return (
-    <html 
-      lang="es" 
-      className={`${inter.variable} ${playfair.variable} h-full`}
+    <html
+      lang="es"
+      className={`${inter.variable} ${playfair.variable}`}
       suppressHydrationWarning
     >
       <body 
-        className="min-h-screen bg-gradient-to-br from-[#F8F8F8] to-[#F0EDED] font-sans text-gray-900 antialiased h-full w-full flex" 
+        className="min-h-screen bg-gradient-to-br from-[#F8F8F8] to-[#F0EDED] font-sans text-gray-900 antialiased w-full"
         suppressHydrationWarning
       >
         <AdminShell user={user}>{children}</AdminShell>

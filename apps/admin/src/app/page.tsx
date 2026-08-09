@@ -10,32 +10,33 @@ async function getDashboardData() {
   try {
     const authHeaders = await getAuthHeader();
     
-    const [usersRes, ordersRes, productsRes] = await Promise.all([
-      fetch(`${API_BASE_URL}/users`, { headers: authHeaders, cache: 'no-store' }),
+    // Se piden sólo los conteos: el listado completo de usuarios es exclusivo
+    // del SUPER_ADMIN, pero cualquier administrador puede ver estas cifras.
+    const [statsRes, ordersRes, productsRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/users/stats`, { headers: authHeaders, cache: 'no-store' }),
       fetch(`${API_BASE_URL}/orders`, { headers: authHeaders, cache: 'no-store' }),
       fetch(`${API_BASE_URL}/products`, { headers: authHeaders, cache: 'no-store' }),
     ]);
 
-    const usersData = usersRes.ok ? await usersRes.json() : { data: [] };
+    const statsData = statsRes.ok ? await statsRes.json() : {};
     const orders = ordersRes.ok ? await ordersRes.json() : [];
     const products = productsRes.ok ? await productsRes.json() : [];
 
     return {
-      users: usersData.data || [],
+      totalUsers: statsData.data?.totalUsers || 0,
+      newUsersThisMonth: statsData.data?.newThisMonth || 0,
+      newUsersPrevMonth: statsData.data?.newPrevMonth || 0,
       orders: orders || [],
       products: products || [],
     };
   } catch (error) {
     console.error('Error loading dashboard data:', error);
-    return { users: [], orders: [], products: [] };
+    return { totalUsers: 0, newUsersThisMonth: 0, newUsersPrevMonth: 0, orders: [], products: [] };
   }
 }
 
 export default async function AdminDashboardPage() {
-  const { users, orders } = await getDashboardData();
-
-  // 1. Total de Usuarios
-  const totalUsers = users.length;
+  const { totalUsers, newUsersThisMonth, newUsersPrevMonth, orders } = await getDashboardData();
 
   // 2. Pedidos Totales
   const totalOrders = orders.length;
@@ -108,23 +109,14 @@ export default async function AdminDashboardPage() {
     revDiffColor = 'text-green-600';
   }
 
-  // Usuarios diff
-  const thisMonthUsers = users.filter((u: any) => {
-    const d = new Date(u.createdAt);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-  });
-  const prevMonthUsers = users.filter((u: any) => {
-    const d = new Date(u.createdAt);
-    return d.getMonth() === prevMonth && d.getFullYear() === prevMonthYear;
-  });
-
+  // Usuarios diff (a partir de los conteos que devuelve la API)
   let userDiffText = 'Sin datos previos';
   let userDiffColor = 'text-gray-500';
-  if (prevMonthUsers.length > 0) {
-    const diff = ((thisMonthUsers.length - prevMonthUsers.length) / prevMonthUsers.length) * 100;
+  if (newUsersPrevMonth > 0) {
+    const diff = ((newUsersThisMonth - newUsersPrevMonth) / newUsersPrevMonth) * 100;
     userDiffText = `${diff >= 0 ? '↑' : '↓'} ${Math.abs(Math.round(diff))}% vs mes pasado`;
     userDiffColor = diff >= 0 ? 'text-green-600' : 'text-red-600';
-  } else if (thisMonthUsers.length > 0) {
+  } else if (newUsersThisMonth > 0) {
     userDiffText = 'Nuevo este mes';
     userDiffColor = 'text-green-600';
   }
@@ -180,10 +172,10 @@ export default async function AdminDashboardPage() {
 
   // Tasa de conversión de este mes vs mes pasado (tendencia)
   const thisMonthUniqueBuyers = new Set(thisMonthOrders.map((o: any) => o.customerId)).size;
-  const thisMonthConvRate = thisMonthUsers.length > 0 ? (thisMonthUniqueBuyers / thisMonthUsers.length) * 100 : 0;
+  const thisMonthConvRate = newUsersThisMonth > 0 ? (thisMonthUniqueBuyers / newUsersThisMonth) * 100 : 0;
 
   const prevMonthUniqueBuyers = new Set(prevMonthOrders.map((o: any) => o.customerId)).size;
-  const prevMonthConvRate = prevMonthUsers.length > 0 ? (prevMonthUniqueBuyers / prevMonthUsers.length) * 100 : 0;
+  const prevMonthConvRate = newUsersPrevMonth > 0 ? (prevMonthUniqueBuyers / newUsersPrevMonth) * 100 : 0;
 
   let convDiffText = 'Sin datos previos';
   let convDiffColor = 'text-gray-500';
@@ -280,16 +272,8 @@ export default async function AdminDashboardPage() {
 
   const events: ActivityEvent[] = [];
 
-  users.slice(0, 5).forEach((u: any) => {
-    events.push({
-      id: `u-${u.id}`,
-      title: `Nuevo Cliente: ${u.firstName} ${u.lastName || ''}`,
-      description: `Registro completado • Hace ${Math.max(1, Math.round((Date.now() - new Date(u.createdAt).getTime()) / 60000))} min`,
-      createdAt: new Date(u.createdAt),
-      icon: '👤',
-      iconBg: 'bg-gray-100 text-gray-700',
-    });
-  });
+  // La actividad se arma sólo con pedidos: el listado de clientas con sus
+  // nombres es información del módulo Equipo/Usuarios (SUPER_ADMIN).
 
   orders.slice(0, 5).forEach((o: any) => {
     events.push({

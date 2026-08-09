@@ -10,12 +10,22 @@ export async function middleware(request: NextRequest) {
   const publicRoutes = ['/login'];
   const isPublic = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
 
+  // Las cabeceras x-user-* las inyecta este middleware con datos ya validados.
+  // Se limpian de la petición entrante para que nadie pueda falsificarlas
+  // mandándolas a mano desde el navegador.
+  const sanitizedHeaders = new Headers(request.headers);
+  ['x-user-id', 'x-user-role', 'x-user-first-name', 'x-user-last-name', 'x-user-email'].forEach((h) =>
+    sanitizedHeaders.delete(h),
+  );
+
   if (isPublic) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: sanitizedHeaders } });
   }
 
-  // /register crea cuentas de administrador: sólo un SUPER_ADMIN ya autenticado puede acceder.
-  const superAdminOnlyRoutes = ['/register'];
+  // Gestión del equipo: crear cuentas (/register) y ver/editar usuarios (/users)
+  // son exclusivos del SUPER_ADMIN. Ocultar el menú no basta: un ADMIN podría
+  // escribir la URL a mano.
+  const superAdminOnlyRoutes = ['/register', '/users'];
   const requiresSuperAdmin = superAdminOnlyRoutes.some(route => pathname.startsWith(route));
 
   let response = NextResponse.next({ request });
@@ -84,18 +94,22 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/', request.url));
     }
 
-    // Pass user data to Server Components via headers
-    response.headers.set('x-user-id', user.id);
-    response.headers.set('x-user-role', user.role);
-    response.headers.set('x-user-first-name', user.firstName || '');
-    response.headers.set('x-user-last-name', user.lastName || '');
-    response.headers.set('x-user-email', user.email || '');
+    // Los Server Components leen estos datos con headers(), que devuelve las
+    // cabeceras de la PETICIÓN. Ponerlas en la respuesta no sirve para eso.
+    sanitizedHeaders.set('x-user-id', user.id);
+    sanitizedHeaders.set('x-user-role', user.role);
+    sanitizedHeaders.set('x-user-first-name', user.firstName || '');
+    sanitizedHeaders.set('x-user-last-name', user.lastName || '');
+    sanitizedHeaders.set('x-user-email', user.email || '');
+
+    const finalResponse = NextResponse.next({ request: { headers: sanitizedHeaders } });
+    // Conservar las cookies refrescadas por Supabase durante getSession().
+    response.cookies.getAll().forEach((cookie) => finalResponse.cookies.set(cookie));
+    return finalResponse;
   } catch (err) {
     const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
   }
-
-  return response;
 }
 
 export const config = {

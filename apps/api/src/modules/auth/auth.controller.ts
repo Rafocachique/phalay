@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus, BadRequestException, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, HttpCode, HttpStatus, BadRequestException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtGuard } from './jwt.guard';
@@ -60,6 +60,29 @@ export class AuthController {
         emailVerified: user.emailVerified,
       },
     };
+  }
+
+  /**
+   * Cada usuario edita SU PROPIO nombre. No toca rol ni estado: eso sigue
+   * siendo exclusivo del SUPER_ADMIN desde Equipo/Usuarios.
+   */
+  @Patch('me')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Actualizar el perfil propio (nombre y apellido)' })
+  async updateMe(
+    @GetUser() user: any,
+    @Body() body: { firstName?: string; lastName?: string },
+  ) {
+    const firstName = body.firstName?.trim();
+    const lastName = body.lastName?.trim();
+
+    if (!firstName || !lastName) {
+      throw new BadRequestException({ success: false, message: 'Nombre y apellido son obligatorios.' });
+    }
+
+    const updated = await this.authService.updateOwnProfile(user.id, { firstName, lastName });
+    return { success: true, data: updated, message: 'Perfil actualizado' };
   }
 
   @Post('verify')

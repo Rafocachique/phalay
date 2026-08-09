@@ -3,16 +3,29 @@
 import { updateProduct } from '@/app/actions/products';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/ImageUpload';
 import { ChevronLeft, Save, Plus, Trash2 } from 'lucide-react';
 
-interface EditarProductoFormProps {
-  product: any;
+interface CatalogOption {
+  id: string;
+  name: string;
 }
 
-export default function EditarProductoForm({ product }: EditarProductoFormProps) {
+interface EditarProductoFormProps {
+  product: any;
+  categories: CatalogOption[];
+  collections: CatalogOption[];
+  catalogFailed: boolean;
+}
+
+export default function EditarProductoForm({
+  product,
+  categories,
+  collections: collectionsList,
+  catalogFailed,
+}: EditarProductoFormProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [image1, setImage1] = useState(product.images?.[0]?.url || '');
@@ -59,34 +72,13 @@ export default function EditarProductoForm({ product }: EditarProductoFormProps)
   const [newColorName, setNewColorName] = useState('');
   const [newColorHex, setNewColorHex] = useState('#8B5A5A');
 
-  // Categories and Collections state
-  const [categories, setCategories] = useState<any[]>([]);
-  const [collectionsList, setCollectionsList] = useState<any[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(product.categoryId || '');
+  // Los tipos de prenda y colecciones llegan ya cargados desde el servidor.
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+    product.categoryId || categories[0]?.id || '',
+  );
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>(
     (product.collections || []).map((col: any) => col.id)
   );
-
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-
-  useEffect(() => {
-    // Fetch categories
-    fetch(`${API_BASE_URL}/products/categories`)
-      .then(res => res.json())
-      .then(data => {
-        setCategories(data);
-        if (data.length > 0 && !selectedCategoryId) {
-          setSelectedCategoryId(data[0].id);
-        }
-      })
-      .catch(() => {});
-
-    // Fetch collections
-    fetch(`${API_BASE_URL}/collections`)
-      .then(res => res.json())
-      .then(data => setCollectionsList(data))
-      .catch(() => {});
-  }, [selectedCategoryId, API_BASE_URL]);
 
   // Generate active combinations to display and serialize variant stocks payload
   const activeCombinations: Array<{ size: string; color: { name: string; hex: string } }> = [];
@@ -416,7 +408,11 @@ export default function EditarProductoForm({ product }: EditarProductoFormProps)
                 <div>
                   <label className="block text-sm font-bold text-gray-900 mb-2">Tipo de Prenda</label>
                   {categories.length === 0 ? (
-                    <div className="w-full bg-[#F8F9FA] rounded-xl p-4 text-xs text-gray-400 italic">Cargando tipos de prenda...</div>
+                    <div className={`w-full rounded-xl p-4 text-xs ${catalogFailed ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-[#F8F9FA] text-gray-500 italic'}`}>
+                      {catalogFailed
+                        ? 'No pudimos cargar los tipos de prenda. Revisa que el servidor esté disponible y recarga la página.'
+                        : 'Aún no hay tipos de prenda. Créalos en la sección Catálogo.'}
+                    </div>
                   ) : (
                     <select
                       name="categoryId"
@@ -435,44 +431,29 @@ export default function EditarProductoForm({ product }: EditarProductoFormProps)
 
                 {/* Colecciones Relacionadas */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-3">Colecciones del Producto</label>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">Colecciones del Producto</label>
                   {collectionsList.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic bg-[#F8F9FA] rounded-xl p-4">No hay colecciones creadas. Agrégalas en la sección Organización Web.</p>
+                    <p className={`text-xs rounded-xl p-4 ${catalogFailed ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-[#F8F9FA] text-gray-500 italic'}`}>
+                      {catalogFailed
+                        ? 'No pudimos cargar las colecciones. Revisa que el servidor esté disponible y recarga la página.'
+                        : 'Aún no hay colecciones. Créalas en la sección Colecciones.'}
+                    </p>
                   ) : (
-                    <div className="grid grid-cols-1 gap-2.5 max-h-[160px] overflow-y-auto pr-1">
-                      {collectionsList.map((col) => {
-                        const isChecked = selectedCollectionIds.includes(col.id);
-                        return (
-                          <label
-                            key={col.id}
-                            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                              isChecked
-                                ? 'bg-[#FBEFEF] border-[#8B5A5A]/50 text-[#8B5A5A] font-bold shadow-sm'
-                                : 'bg-[#F8F9FA] border-transparent text-gray-600 hover:border-gray-200'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => {
-                                if (isChecked) {
-                                  setSelectedCollectionIds(selectedCollectionIds.filter(id => id !== col.id));
-                                } else {
-                                  setSelectedCollectionIds([...selectedCollectionIds, col.id]);
-                                }
-                              }}
-                              className="hidden"
-                            />
-                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                              isChecked ? 'bg-[#8B5A5A] border-[#8B5A5A] text-white' : 'border-gray-300 bg-white'
-                            }`}>
-                              {isChecked && <span className="text-[10px] font-black">✓</span>}
-                            </div>
-                            <span className="text-xs">{col.name}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <select
+                      value={selectedCollectionIds[0] || ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setSelectedCollectionIds(val ? [val] : []);
+                      }}
+                      className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 font-bold transition-colors cursor-pointer text-sm"
+                    >
+                      <option value="">Ninguna colección</option>
+                      {collectionsList.map((col) => (
+                        <option key={col.id} value={col.id}>
+                          {col.name}
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </div>
               </div>

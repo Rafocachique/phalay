@@ -12,7 +12,7 @@ export class ProductsService {
         { position: 'asc' },
         { createdAt: 'desc' }
       ],
-      include: { collections: true, images: true, variants: true } 
+      include: { collections: true, images: true, variants: true, category: true } 
     });
   }
 

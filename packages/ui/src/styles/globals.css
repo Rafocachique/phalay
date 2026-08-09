@@ -48,6 +48,39 @@
   body {
     @apply bg-[var(--color-background)] font-sans text-dark-800 selection:bg-primary-100 selection:text-dark-900;
   }
+
+  /* === BARRAS DE SCROLL ===
+     Mismo diseño en toda la plataforma (tienda y panel): finas, sin flechas
+     y con el color de la marca, en vez de la barra gris por defecto del SO. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #C9B4B4 transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #C9B4B4;
+    border-radius: 9999px;
+    /* El borde transparente deja aire alrededor del pulgar. */
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #8B5A5A;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
 @layer components {

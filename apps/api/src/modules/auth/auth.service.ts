@@ -198,6 +198,26 @@ export class AuthService implements OnModuleInit {
     }
   }
 
+  /** Actualiza el nombre del propio usuario autenticado. Nunca toca rol ni estado. */
+  async updateOwnProfile(userId: string, data: { firstName: string; lastName: string }) {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { firstName: data.firstName, lastName: data.lastName },
+    });
+
+    // Mantener sincronizado el metadata de Supabase para que el nombre no
+    // quede desfasado entre ambos sistemas.
+    try {
+      await this.supabase.auth.admin.updateUserById(updated.supabaseAuthId, {
+        user_metadata: { first_name: data.firstName, last_name: data.lastName },
+      });
+    } catch (err: any) {
+      this.logger.warn(`No se pudo sincronizar el nombre en Supabase: ${err.message}`);
+    }
+
+    return { id: updated.id, firstName: updated.firstName, lastName: updated.lastName, email: updated.email };
+  }
+
   /**
    * Genera un código de 6 dígitos, guarda su hash (nunca el código en claro)
    * y lo envía por Resend. El código en sí jamás sale de este método.

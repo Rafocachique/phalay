@@ -43,18 +43,21 @@ export default function NuevoProductoPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  const [catalogFailed, setCatalogFailed] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/products/categories`)
-      .then(res => res.json())
-      .then(data => { setCategories(data); if (data.length > 0) setSelectedCategoryId(data[0].id); })
-      .catch(() => {});
-    fetch(`${API_BASE_URL}/collections`)
-      .then(res => res.json())
-      .then(data => setCollectionsList(data))
-      .catch(() => {});
-  }, [API_BASE_URL]);
+    // Se pide a nuestra propia ruta (mismo origen) en vez de a la API directa:
+    // desde el navegador la API bloquea el origen por CORS en producción.
+    fetch('/api/catalog-options', { cache: 'no-store' })
+      .then(async res => {
+        const data = await res.json();
+        setCategories(data.categories || []);
+        setCollectionsList(data.collections || []);
+        setCatalogFailed(!res.ok || !!data.failed);
+        if (data.categories?.length > 0) setSelectedCategoryId(data.categories[0].id);
+      })
+      .catch(() => setCatalogFailed(true));
+  }, []);
 
   // Get all variant combinations
   const getVariantCombinations = useCallback(() => {
@@ -368,7 +371,11 @@ export default function NuevoProductoPage() {
                 <div>
                   <label className="block text-sm font-bold text-gray-900 mb-2">Tipo de Prenda</label>
                   {categories.length === 0 ? (
-                    <div className="w-full bg-[#F8F9FA] rounded-xl p-4 text-xs text-gray-400 italic">Cargando...</div>
+                    <div className={`w-full rounded-xl p-4 text-xs ${catalogFailed ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-[#F8F9FA] text-gray-500 italic'}`}>
+                      {catalogFailed
+                        ? 'No pudimos cargar los tipos de prenda. Revisa que el servidor esté disponible y recarga la página.'
+                        : 'Aún no hay tipos de prenda. Créalos en la sección Catálogo.'}
+                    </div>
                   ) : (
                     <select name="categoryId" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)}
                       className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 font-bold transition-colors cursor-pointer text-sm">
@@ -379,26 +386,29 @@ export default function NuevoProductoPage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-3">Colecciones del Producto</label>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">Colecciones del Producto</label>
                   {collectionsList.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic bg-[#F8F9FA] rounded-xl p-4">No hay colecciones creadas.</p>
+                    <p className={`text-xs rounded-xl p-4 ${catalogFailed ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-[#F8F9FA] text-gray-500 italic'}`}>
+                      {catalogFailed
+                        ? 'No pudimos cargar las colecciones. Revisa que el servidor esté disponible y recarga la página.'
+                        : 'Aún no hay colecciones. Créalas en la sección Colecciones.'}
+                    </p>
                   ) : (
-                    <div className="grid grid-cols-1 gap-2.5 max-h-[160px] overflow-y-auto pr-1">
-                      {collectionsList.map((col) => {
-                        const isChecked = selectedCollectionIds.includes(col.id);
-                        return (
-                          <label key={col.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border cursor-pointer transition-all ${isChecked ? 'bg-[#FBEFEF] border-[#8B5A5A]/50 text-[#8B5A5A] font-bold shadow-sm' : 'bg-[#F8F9FA] border-transparent text-gray-600 hover:border-gray-200'}`}>
-                            <input type="checkbox" checked={isChecked}
-                              onChange={() => setSelectedCollectionIds(isChecked ? selectedCollectionIds.filter(id => id !== col.id) : [...selectedCollectionIds, col.id])}
-                              className="hidden" />
-                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${isChecked ? 'bg-[#8B5A5A] border-[#8B5A5A] text-white' : 'border-gray-300 bg-white'}`}>
-                              {isChecked && <span className="text-[10px] font-black">✓</span>}
-                            </div>
-                            <span className="text-xs">{col.name}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <select
+                      value={selectedCollectionIds[0] || ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setSelectedCollectionIds(val ? [val] : []);
+                      }}
+                      className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 font-bold transition-colors cursor-pointer text-sm"
+                    >
+                      <option value="">Ninguna colección</option>
+                      {collectionsList.map((col) => (
+                        <option key={col.id} value={col.id}>
+                          {col.name}
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </div>
               </div>
