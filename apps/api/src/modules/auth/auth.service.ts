@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomInt, createHash, timingSafeEqual } from 'crypto';
@@ -139,10 +139,35 @@ export class AuthService implements OnModuleInit {
     email: string;
     firstName: string;
     lastName: string;
-    /** true sólo cuando el proveedor (p. ej. Google) ya confirmó el correo por nosotros. */
-    emailVerified?: boolean;
   }) {
     try {
+      // Este endpoint es público, así que NADA de lo que llega en el cuerpo
+      // decide si la cuenta está verificada: se le pregunta a Supabase, que es
+      // la fuente de verdad. Antes se aceptaba un emailVerified del cliente y
+      // cualquiera podía saltarse el código de verificación mandándolo en true.
+      const { data: authUser, error: authError } = await this.supabase.auth.admin.getUserById(
+        data.supabaseAuthId,
+      );
+
+      if (authError || !authUser?.user) {
+        this.logger.warn(`Intento de registro con un supabaseAuthId inexistente: ${data.supabaseAuthId}`);
+        throw new BadRequestException('La cuenta de autenticación no existe.');
+      }
+
+      // El correo debe ser el de esa cuenta: si no, alguien estaría intentando
+      // reclamar el correo de otra persona.
+      const authEmail = (authUser.user.email || '').toLowerCase();
+      const email = (data.email || '').trim().toLowerCase();
+      if (!authEmail || authEmail !== email) {
+        this.logger.warn(`Registro rechazado: el correo ${email} no coincide con la cuenta de Supabase`);
+        throw new BadRequestException('El correo no corresponde a la cuenta de autenticación.');
+      }
+
+      // Sólo los proveedores externos (Google, etc.) confirman el correo por
+      // nosotros. Con registro por correo hay que pasar por el código.
+      const providers: string[] = authUser.user.app_metadata?.providers || [];
+      const verifiedByProvider = providers.some((p) => p !== 'email');
+
       // 1. Verificar si el usuario ya existe por supabaseAuthId
       const existingById = await this.prisma.user.findUnique({
         where: { supabaseAuthId: data.supabaseAuthId },
@@ -154,22 +179,21 @@ export class AuthService implements OnModuleInit {
       }
 
       // 2. Verificar si el usuario ya existe por email (puede tener otro supabaseAuthId)
-      const existingByEmail = await this.prisma.user.findUnique({
-        where: { email: data.email },
+      const existingByEmail = await this.prisma.user.findFirst({
+        where: { email: { equals: email, mode: 'insensitive' } },
       });
 
       if (existingByEmail) {
         // Actualizar el supabaseAuthId para sincronizar. El rol NUNCA se toca aquí:
         // el registro público no puede otorgar ni cambiar roles.
-        this.logger.log(`Usuario existe por email, actualizando supabaseAuthId: ${data.email}`);
+        this.logger.log(`Usuario existe por email, actualizando supabaseAuthId: ${email}`);
         const updated = await this.prisma.user.update({
-          where: { email: data.email },
+          where: { id: existingByEmail.id },
           data: {
             supabaseAuthId: data.supabaseAuthId,
             status: 'ACTIVE',
-            // Si entra por Google y su correo ya estaba pendiente de verificar
-            // por el flujo de código, Google ya nos ahorró ese paso.
-            ...(data.emailVerified ? { emailVerified: true } : {}),
+            // Si entra por Google, el proveedor ya confirmó el correo por nosotros.
+            ...(verifiedByProvider ? { emailVerified: true } : {}),
           },
         });
         return updated;
@@ -181,16 +205,16 @@ export class AuthService implements OnModuleInit {
       const user = await this.prisma.user.create({
         data: {
           supabaseAuthId: data.supabaseAuthId,
-          email: data.email,
+          email,
           firstName: data.firstName,
           lastName: data.lastName,
           role: 'CUSTOMER',
           status: 'ACTIVE',
-          emailVerified: !!data.emailVerified,
+          emailVerified: verifiedByProvider,
         },
       });
 
-      this.logger.log(`Usuario registrado exitosamente: ${data.email}`);
+      this.logger.log(`Usuario registrado exitosamente: ${email}`);
       return user;
     } catch (err: any) {
       this.logger.error(`Error en registerUser para ${data.email}: ${err.message}`, err.stack);

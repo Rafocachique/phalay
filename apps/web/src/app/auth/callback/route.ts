@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
         email: data.user.email,
         firstName: firstName || 'Cliente',
         lastName: rest.join(' ') || '',
-        emailVerified: true,
       }),
     });
   } catch (err) {
