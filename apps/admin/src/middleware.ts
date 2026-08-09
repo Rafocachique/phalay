@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
+/**
+ * Minutos de inactividad tras los cuales se cierra la sesión del panel.
+ * El panel maneja pedidos, pagos y cuentas: si alguien deja la computadora
+ * abierta, la sesión no debe quedar viva indefinidamente.
+ */
+const IDLE_TIMEOUT_MINUTES = Number(process.env.ADMIN_IDLE_TIMEOUT_MINUTES) || 20;
+const LAST_SEEN_COOKIE = 'phalay_admin_last_seen';
+
+/** Borra la sesión de Supabase y la marca de actividad de la respuesta. */
+function clearSessionCookies(request: NextRequest, response: NextResponse) {
+  request.cookies.getAll().forEach((cookie) => {
+    if (cookie.name.startsWith('sb-') || cookie.name === LAST_SEEN_COOKIE) {
+      response.cookies.set(cookie.name, '', { maxAge: 0, path: '/' });
+    }
+  });
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -19,7 +37,24 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isPublic) {
-    return NextResponse.next({ request: { headers: sanitizedHeaders } });
+    // Al llegar al login se limpia la marca de actividad para que la próxima
+    // sesión empiece con el contador en cero.
+    const publicResponse = NextResponse.next({ request: { headers: sanitizedHeaders } });
+    publicResponse.cookies.set(LAST_SEEN_COOKIE, '', { maxAge: 0, path: '/' });
+    return publicResponse;
+  }
+
+  // ── Cierre por inactividad (validado en el servidor) ──
+  // La marca va en una cookie httpOnly que sólo escribe este middleware, así
+  // que no se puede falsear desde el navegador para estirar la sesión.
+  const lastSeenRaw = request.cookies.get(LAST_SEEN_COOKIE)?.value;
+  const lastSeen = lastSeenRaw ? Number(lastSeenRaw) : null;
+  const idleLimitMs = IDLE_TIMEOUT_MINUTES * 60 * 1000;
+
+  if (lastSeen && Number.isFinite(lastSeen) && Date.now() - lastSeen > idleLimitMs) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('motivo', 'inactividad');
+    return clearSessionCookies(request, NextResponse.redirect(loginUrl));
   }
 
   // Gestión del equipo: crear cuentas (/register) y ver/editar usuarios (/users)
@@ -105,6 +140,15 @@ export async function middleware(request: NextRequest) {
     const finalResponse = NextResponse.next({ request: { headers: sanitizedHeaders } });
     // Conservar las cookies refrescadas por Supabase durante getSession().
     response.cookies.getAll().forEach((cookie) => finalResponse.cookies.set(cookie));
+
+    // Cada petición válida corre el reloj de inactividad.
+    finalResponse.cookies.set(LAST_SEEN_COOKIE, String(Date.now()), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
     return finalResponse;
   } catch (err) {
     const loginUrl = new URL('/login', request.url);
@@ -113,5 +157,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
+  // Se excluye /api salvo /api/keepalive, que necesita pasar por aquí para
+  // renovar la marca de actividad mientras la persona sigue trabajando.
+  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)', '/api/keepalive'],
 };

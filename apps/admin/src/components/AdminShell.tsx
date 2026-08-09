@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Toaster } from 'sonner';
 import { AdminLogoutButton } from '@/components/AdminLogoutButton';
+import IdleSessionGuard from '@/components/IdleSessionGuard';
 
 interface NavItem {
   name: string;
@@ -140,7 +141,15 @@ function NavGroupMenu({ group, pathname }: { group: NavGroup; pathname: string }
   );
 }
 
-export default function AdminShell({ children, user }: { children: React.ReactNode, user?: any }) {
+export default function AdminShell({
+  children,
+  user,
+  idleTimeoutMinutes = 20,
+}: {
+  children: React.ReactNode;
+  user?: any;
+  idleTimeoutMinutes?: number;
+}) {
   const pathname = usePathname();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -308,6 +317,7 @@ export default function AdminShell({ children, user }: { children: React.ReactNo
       </header>
 
       <Toaster position="top-center" richColors />
+      <IdleSessionGuard timeoutMinutes={idleTimeoutMinutes} />
 
       <main className="flex-1 w-full">
         <div className="max-w-[1600px] mx-auto w-full p-4 sm:p-8">{children}</div>

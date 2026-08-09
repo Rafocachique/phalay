@@ -26,6 +26,8 @@ import { headers } from 'next/headers';
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const headersList = await headers();
+  // Debe coincidir con el límite que aplica el middleware.
+  const idleTimeoutMinutes = Number(process.env.ADMIN_IDLE_TIMEOUT_MINUTES) || 20;
   const user = {
     id: headersList.get('x-user-id'),
     role: headersList.get('x-user-role'),
@@ -46,7 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         className="min-h-screen bg-gradient-to-br from-[#F8F8F8] to-[#F0EDED] font-sans text-gray-900 antialiased w-full"
         suppressHydrationWarning
       >
-        <AdminShell user={user}>{children}</AdminShell>
+        <AdminShell user={user} idleTimeoutMinutes={idleTimeoutMinutes}>{children}</AdminShell>
       </body>
     </html>
   );
