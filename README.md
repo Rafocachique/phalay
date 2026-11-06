@@ -8,10 +8,10 @@ PHALAY es una plataforma de comercio electrónico SaaS premium y moderna, diseñ
 
 El proyecto está construido bajo una arquitectura de monorepo gestionada con **Turborepo** y **pnpm workspaces**:
 
-* **Storefront Client (`apps/web`):** Aplicación en **Next.js (App Router)** orientada al cliente. Utiliza traducciones con `next-intl` y un diseño minimalista de alto contraste inspirado en las principales firmas de moda internacional.
-* **Portal de Administración (`apps/admin`):** Panel de control en **Next.js (App Router)** para la gestión de productos, colecciones, pedidos, estadísticas comerciales y mantenimiento de usuarios.
-* **Backend API (`apps/api`):** Servicio REST construido sobre **NestJS** que expone endpoints seguros y eficientes.
-* **Base de Datos & Auth (`packages/database`):** Modelado con **Prisma ORM** sobre una base de datos **PostgreSQL** alojada en **Supabase**, utilizando además **Supabase Auth** para el flujo seguro de sesiones y usuarios.
+* **Storefront Client (`frontend/web`):** Aplicación en **Next.js (App Router)** orientada al cliente. Utiliza traducciones con `next-intl` y un diseño minimalista de alto contraste inspirado en las principales firmas de moda internacional.
+* **Portal de Administración (`frontend/admin`):** Panel de control en **Next.js (App Router)** para la gestión de productos, colecciones, pedidos, estadísticas comerciales y mantenimiento de usuarios.
+* **Backend API (`backend/api`):** Servicio REST construido sobre **NestJS** que expone endpoints seguros y eficientes.
+* **Base de Datos & Auth (`backend/database`):** Modelado con **Prisma ORM** sobre una base de datos **PostgreSQL** alojada en **Supabase**, utilizando además **Supabase Auth** para el flujo seguro de sesiones y usuarios.
 
 ---
 
@@ -55,7 +55,7 @@ El proyecto está construido bajo una arquitectura de monorepo gestionada con **
    ```
 
 2. **Configurar variables de entorno:**
-   Copia el archivo `.env.example` en la raíz y en cada aplicación (`apps/web`, `apps/admin`, `apps/api`), llénalos con tus credenciales reales:
+   Copia el archivo `.env.example` en la raíz y en cada aplicación (`frontend/web`, `frontend/admin`, `backend/api`), llénalos con tus credenciales reales:
    ```bash
    cp .env.example .env
    ```
@@ -84,3 +84,7 @@ El proyecto está construido bajo una arquitectura de monorepo gestionada con **
 
 ## 📝 Licencia
 Este proyecto es de código cerrado y de uso exclusivo comercial de la marca PHALAY.
+
+## Despliegue en Vercel
+
+Tienda, panel y API se despliegan como tres proyectos de la misma cuenta. La API NestJS no requiere Render. Ver [instrucciones de despliegue](backend/DEPLOY.md).
