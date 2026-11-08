@@ -57,8 +57,8 @@ export default function EditarProductoForm({
   );
 
   // Initialize variantStocks from product.variants using format "size:color" as key
-  const [variantStocks, setVariantStocks] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
+  const [variantStocks, setVariantStocks] = useState<Record<string, number | ''>>(() => {
+    const initial: Record<string, number | ''> = {};
     if (product.variants && Array.isArray(product.variants)) {
       for (const variant of product.variants) {
         const key = `${variant.size || ''}:${variant.color || ''}`;
@@ -116,7 +116,7 @@ export default function EditarProductoForm({
 
     const variantsPayload = activeCombinations.map(({ size, color }) => {
       const key = `${size}:${color.name}`;
-      const stock = variantStocks[key] !== undefined ? variantStocks[key] : 10;
+      const stock = Number(variantStocks[key] !== undefined ? variantStocks[key] : 10) || 0;
       return { size, color: color.name, colorHex: color.hex, stock };
     });
     formData.set('variants', JSON.stringify(variantsPayload));
@@ -225,7 +225,7 @@ export default function EditarProductoForm({
                     type="number" 
                     name="stock"
                     readOnly
-                    value={activeCombinations.reduce((acc, { size, color }) => acc + (variantStocks[`${size}:${color.name}`] || 0), 0)}
+                    value={activeCombinations.reduce((acc, { size, color }) => acc + Number(variantStocks[`${size}:${color.name}`] || 0), 0)}
                     className="w-full bg-gray-100 border border-transparent rounded-xl px-4 py-3.5 outline-none text-gray-600 font-bold transition-colors cursor-not-allowed" 
                   />
                   <p className="text-[10px] text-gray-400 mt-1">Se calcula automáticamente sumando las variantes.</p>
@@ -380,8 +380,7 @@ export default function EditarProductoForm({
                                 required
                                 value={stockVal}
                                 onChange={(e) => {
-                                  const val = parseInt(e.target.value);
-                                  const safeVal = isNaN(val) ? 0 : Math.max(0, val);
+                                  const safeVal = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
                                   setVariantStocks(prev => ({
                                     ...prev,
                                     [key]: safeVal,

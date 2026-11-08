@@ -12,7 +12,9 @@ const EMPTY_FORM = {
   district: '',
   agencyId: '',
   agencyAddress: '',
-  price: 0,
+  // Un campo numérico controlado debe poder quedar vacío mientras se edita.
+  // Convertirlo de inmediato a 0 impedía borrar el valor en el navegador.
+  price: '' as number | '',
   estimatedDays: '',
   isActive: true,
 };
@@ -74,7 +76,7 @@ export default function EnviosPage() {
         district: dest.district || '',
         agencyId: dest.agencyId || '',
         agencyAddress: dest.agencyAddress || '',
-        price: dest.price,
+        price: Number(dest.price),
         estimatedDays: dest.estimatedDays || '',
         isActive: dest.isActive,
       });
@@ -116,11 +118,12 @@ export default function EnviosPage() {
       toast.error('Selecciona la agencia de transporte.');
       return;
     }
+    const destinationPayload = { ...formData, price: Number(formData.price) };
 
     // Si venimos de una solicitud, se crea el destino y se resuelve a la vez:
     // el pedido pendiente recibe su costo de envío y deja de estar "por cotizar".
     if (resolvingRequest) {
-      const result = await resolveRequestWithNewDestination(resolvingRequest.id, formData);
+      const result = await resolveRequestWithNewDestination(resolvingRequest.id, destinationPayload);
       if ('error' in result) {
         toast.error(result.error || 'No se pudo configurar el destino');
         return;
@@ -133,7 +136,7 @@ export default function EnviosPage() {
       return;
     }
 
-    const result = await saveDestination(editingId, formData);
+    const result = await saveDestination(editingId, destinationPayload);
     if ('error' in result) {
       toast.error(result.error || 'Ocurrió un error al guardar');
       return;
@@ -686,7 +689,10 @@ export default function EnviosPage() {
                     step="0.10"
                     min="0.10"
                     value={formData.price}
-                    onChange={e => setFormData({...formData, price: parseFloat(e.target.value) || 0})}
+                    onChange={e => setFormData({
+                      ...formData,
+                      price: e.target.value === '' ? '' : Number(e.target.value),
+                    })}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-[#8B5A5A] focus:ring-2 focus:ring-[#8B5A5A]/20 focus:border-[#8B5A5A] outline-none"
                     required
                   />

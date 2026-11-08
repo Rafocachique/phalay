@@ -273,11 +273,14 @@ export default function MisPedidosPage() {
                 order.address?.state,
                 order.destination?.agencyName,
               );
-              const shippingPending = order.paymentStatus === 'COMPLETED'
-                && order.shippingDestinationId
+              const shippingQuoted = order.shippingDestinationId
                 && Number(order.shippingCost) > 0
                 && !order.isShippingPaid
                 && order.missingRequests?.some((request: any) => request.status === 'RESOLVED');
+              const shippingPending = order.paymentStatus === 'COMPLETED' && shippingQuoted;
+              const shippingAwaitingProductPayment = order.paymentStatus !== 'COMPLETED' && shippingQuoted;
+              const shippingAwaitingQuote = !order.shippingDestinationId
+                && order.missingRequests?.some((request: any) => request.status === 'PENDING');
               const paymentPanelOpen = shippingPaymentOrderId === order.id && shippingPaymentConfig;
 
               return (
@@ -376,6 +379,34 @@ export default function MisPedidosPage() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {shippingAwaitingProductPayment && (
+                    <div className="mx-6 my-5 rounded-xl border border-amber-200 bg-amber-50 p-5">
+                      <div className="flex gap-3">
+                        <div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700"><Clock size={17} /></div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Tu envío ya fue cotizado: S/ {Number(order.shippingCost).toFixed(2)}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                            Primero validaremos el pago de tus prendas. Apenas quede confirmado, aquí aparecerá el botón para pagar solamente el envío a <strong>{order.destination?.district || order.destination?.department || 'tu destino'}</strong>.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {shippingAwaitingQuote && (
+                    <div className="mx-6 my-5 rounded-xl border border-blue-100 bg-blue-50 p-5">
+                      <div className="flex gap-3">
+                        <div className="mt-0.5 rounded-full bg-blue-100 p-2 text-blue-700"><MapPin size={17} /></div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Estamos cotizando tu envío</p>
+                          <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                            El equipo confirmará la cobertura y el importe. Cuando el destino tenga precio, verás aquí el siguiente paso para pagar el envío por separado.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
 

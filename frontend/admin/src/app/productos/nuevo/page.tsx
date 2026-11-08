@@ -9,7 +9,7 @@ import ImageUpload from '@/components/ImageUpload';
 import { ChevronLeft, Save, Plus, Trash2, Info, RefreshCw } from 'lucide-react';
 
 type ColorItem = { name: string; hex: string };
-type VariantStock = Record<string, number>; // key = "size:color"
+type VariantStock = Record<string, number | ''>; // key = "size:color"
 
 const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL'];
 
@@ -77,14 +77,14 @@ export default function NuevoProductoPage() {
   };
 
   // Set stock for a specific variant
-  const setVariantStock = (size: string, colorName: string, value: number) => {
+  const setVariantStock = (size: string, colorName: string, value: number | '') => {
     const key = `${size}:${colorName}`;
     setVariantStocks(prev => ({ ...prev, [key]: value }));
   };
 
   // Total stock to show
   const totalStock = getVariantCombinations().reduce((sum, { size, color }) => {
-    return sum + getVariantStock(size, color.name);
+    return sum + Number(getVariantStock(size, color.name) || 0);
   }, 0);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -116,7 +116,7 @@ export default function NuevoProductoPage() {
       size,
       color: color.name,
       colorHex: color.hex,
-      stock: getVariantStock(size, color.name),
+      stock: Number(getVariantStock(size, color.name) || 0),
     }));
     formData.set('variants', JSON.stringify(variants));
     formData.set('stock', String(totalStock));
@@ -351,7 +351,11 @@ export default function NuevoProductoPage() {
                                 type="number"
                                 min="0"
                                 value={stockVal}
-                                onChange={e => setVariantStock(size, color.name, Number(e.target.value))}
+                                onChange={e => setVariantStock(
+                                  size,
+                                  color.name,
+                                  e.target.value === '' ? '' : Math.max(0, Number(e.target.value)),
+                                )}
                                 className={`w-24 text-center rounded-xl px-3 py-2 font-bold text-sm outline-none border transition-colors ${isOverridden ? 'bg-[#FBEFEF] border-[#8B5A5A]/40 text-[#8B5A5A]' : 'bg-[#F8F9FA] border-transparent text-gray-900 focus:bg-white focus:border-[#8B5A5A]'}`}
                               />
                             </td>
