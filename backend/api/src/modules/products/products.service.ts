@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
@@ -13,7 +14,7 @@ export class ProductsService {
         { position: 'asc' },
         { createdAt: 'desc' }
       ],
-      include: { collections: true, images: true, variants: true, category: true } 
+      include: { collections: true, images: true, variants: { where: { isActive: true } }, category: true }
     });
   }
 
@@ -32,7 +33,7 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { collections: true, images: true, variants: true },
+      include: { collections: true, images: true, variants: { where: { isActive: true } } },
     });
     if (!product || product.deletedAt) throw new NotFoundException('Product not found');
     return product;
@@ -44,7 +45,7 @@ export class ProductsService {
       include: {
         collections: true,
         images: true,
-        variants: true,
+        variants: { where: { isActive: true } },
         category: true,
         reviews: {
           where: { deletedAt: null },
@@ -80,8 +81,7 @@ export class ProductsService {
   }
 
   async create(data: any) {
-    // Generate a basic slug if not provided
-    const slug = data.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const slug = await this.nextAvailableSlug(data.name);
     
     let category = await this.prisma.productCategory.findFirst();
     if (!category) {
@@ -93,52 +93,103 @@ export class ProductsService {
       });
     }
 
-    const imageUrls = data.images || [];
+    const imageUrls = Array.isArray(data.images) ? data.images.filter(Boolean) : [];
+    const variants = this.buildVariants(data, data.name, data.sku, Number(data.price));
 
-    const product = await this.prisma.product.create({
-      data: {
-        name: data.name,
-        description: data.description || '',
-        price: data.price,
-        sku: data.sku,
-        slug,
-        categoryId: data.categoryId || category.id,
-        status: data.status || 'ACTIVE',
-        tags: data.tags || [],
-        images: imageUrls.length > 0 ? {
-          create: imageUrls.map((url: string, index: number) => ({
-            url,
-            isMain: index === 0,
-            position: index,
-          }))
-        } : undefined,
-        collections: data.collectionIds && data.collectionIds.length > 0 ? {
-          connect: data.collectionIds.map((id: string) => ({ id }))
-        } : undefined,
-      },
-    });
+    try {
+      const product = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.product.create({
+          data: {
+            name: data.name.trim(),
+            description: data.description || '',
+            price: data.price,
+            sku: data.sku.trim(),
+            slug,
+            categoryId: data.categoryId || category.id,
+            status: data.status || 'ACTIVE',
+            tags: data.tags || [],
+            images: imageUrls.length > 0 ? {
+              create: imageUrls.map((url: string, index: number) => ({
+                url,
+                isMain: index === 0,
+                position: index,
+              })),
+            } : undefined,
+            collections: data.collectionIds?.length > 0 ? {
+              connect: data.collectionIds.map((id: string) => ({ id })),
+            } : undefined,
+          },
+        });
 
-    // Parse and generate variants
-    const { sizes, colors } = parseTagsForVariants(data.tags || []);
-    const variantCombinations = generateVariantCombinations(
-      product.name,
-      product.sku,
-      Number(product.price),
-      sizes,
-      colors,
-      data.stock !== undefined ? parseInt(data.stock) : 10
-    );
+        await tx.productVariant.createMany({
+          data: variants.map((variant: any) => ({ ...variant, productId: created.id })),
+        });
+        return created;
+      });
+      return this.findOne(product.id);
+    } catch (error) {
+      this.throwProductWriteError(error);
+    }
+  }
 
-    if (variantCombinations.length > 0) {
-      await this.prisma.productVariant.createMany({
-        data: variantCombinations.map(v => ({
-          ...v,
-          productId: product.id,
-        })),
+  private async nextAvailableSlug(name: string) {
+    const base = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'producto';
+
+    let candidate = base;
+    let suffix = 2;
+    while (await this.prisma.product.findFirst({ where: { slug: candidate } })) {
+      candidate = `${base}-${suffix++}`;
+    }
+    return candidate;
+  }
+
+  private buildVariants(data: any, productName: string, productSku: string, price: number) {
+    if (Array.isArray(data.variants) && data.variants.length > 0) {
+      const keys = new Set<string>();
+      return data.variants.map((input: any, index: number) => {
+        const size = typeof input.size === 'string' && input.size.trim() ? input.size.trim() : null;
+        const color = typeof input.color === 'string' && input.color.trim() ? input.color.trim() : null;
+        const stock = Number(input.stock);
+        if (!Number.isInteger(stock) || stock < 0) {
+          throw new BadRequestException(`El stock de la variante ${index + 1} debe ser un entero igual o mayor a cero.`);
+        }
+        const key = `${size || ''}:${color || ''}`;
+        if (keys.has(key)) {
+          throw new BadRequestException('No repitas la misma combinación de talla y color.');
+        }
+        keys.add(key);
+        return buildVariant(productName, productSku, price, size, color, input.colorHex, stock);
       });
     }
 
-    return this.findOne(product.id);
+    const { sizes, colors } = parseTagsForVariants(data.tags || []);
+    return generateVariantCombinations(
+      productName,
+      productSku,
+      price,
+      sizes,
+      colors,
+      data.stock !== undefined ? Number(data.stock) : 10,
+    );
+  }
+
+  private throwProductWriteError(error: unknown): never {
+    if (error instanceof BadRequestException) throw error;
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        const fields = Array.isArray(error.meta?.target) ? error.meta.target.join(', ') : 'SKU';
+        throw new BadRequestException(`Ya existe un producto con ese ${fields}. Usa un SKU diferente.`);
+      }
+      if (error.code === 'P2003') {
+        throw new BadRequestException('La categoría o colección seleccionada ya no existe. Recarga la página y vuelve a elegirla.');
+      }
+    }
+    throw error;
   }
 
   async update(id: string, data: any) {
@@ -162,90 +213,47 @@ export class ProductsService {
       };
     }
 
-    const updatedProduct = await this.prisma.product.update({
-      where: { id },
-      data: updateData,
-    });
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const updatedProduct = await tx.product.update({ where: { id }, data: updateData });
+        if (data.tags === undefined && data.price === undefined && data.sku === undefined && stock === undefined && variants === undefined) return;
 
-    if (data.tags !== undefined || data.price !== undefined || data.sku !== undefined || stock !== undefined || variants !== undefined) {
-      const { sizes, colors } = parseTagsForVariants(updatedProduct.tags || []);
-      const newStock = stock !== undefined ? parseInt(stock) : 10;
-      
-      const expectedCombinations = generateVariantCombinations(
-        updatedProduct.name,
-        updatedProduct.sku,
-        Number(updatedProduct.price),
-        sizes,
-        colors,
-        newStock
-      );
-
-      const currentVariants = await this.prisma.productVariant.findMany({
-        where: { productId: id }
-      });
-
-      const keepVariantIds: string[] = [];
-
-      for (const expected of expectedCombinations) {
-        const existing = currentVariants.find(
-          v => 
-            (v.size || '') === (expected.size || '') && 
-            (v.color || '') === (expected.color || '')
+        const expectedCombinations = this.buildVariants(
+          { ...data, variants, stock },
+          updatedProduct.name,
+          updatedProduct.sku,
+          Number(updatedProduct.price),
         );
+        const currentVariants = await tx.productVariant.findMany({ where: { productId: id } });
+        const keepVariantIds: string[] = [];
 
-        let variantStock = expected.stock;
-        if (variants && Array.isArray(variants)) {
-          const matchedVariantPayload = variants.find(
-            (v: any) =>
-              (v.size || '') === (expected.size || '') &&
-              (v.color || '') === (expected.color || '')
+        for (const expected of expectedCombinations) {
+          const existing = currentVariants.find((variant) =>
+            (variant.size || '') === (expected.size || '') && (variant.color || '') === (expected.color || ''),
           );
-          if (matchedVariantPayload && matchedVariantPayload.stock !== undefined) {
-            variantStock = parseInt(matchedVariantPayload.stock);
+          if (existing) {
+            await tx.productVariant.update({
+              where: { id: existing.id },
+              data: { ...expected, isActive: true },
+            });
+            keepVariantIds.push(existing.id);
+          } else {
+            const created = await tx.productVariant.create({ data: { ...expected, productId: id } });
+            keepVariantIds.push(created.id);
           }
-        } else if (existing && stock === undefined) {
-          // If we are not resetting stock and we didn't get variants payload, retain existing stock
-          variantStock = existing.stock;
         }
 
-        if (existing) {
-          const updatedVar = await this.prisma.productVariant.update({
-            where: { id: existing.id },
-            data: {
-              name: expected.name,
-              sku: expected.sku,
-              price: expected.price,
-              colorHex: expected.colorHex,
-              stock: variantStock,
-            }
-          });
-          keepVariantIds.push(updatedVar.id);
-        } else {
-          const newVar = await this.prisma.productVariant.create({
-            data: {
-              ...expected,
-              stock: variantStock,
-              productId: id,
-            }
-          });
-          keepVariantIds.push(newVar.id);
+        // No se borran variantes con historial de pedidos: se inactivan para
+        // que no vuelvan a venderse y el comprobante histórico siga íntegro.
+        const inactiveIds = currentVariants.filter((variant) => !keepVariantIds.includes(variant.id)).map((variant) => variant.id);
+        if (inactiveIds.length > 0) {
+          await tx.productVariant.updateMany({ where: { id: { in: inactiveIds } }, data: { isActive: false } });
         }
-      }
-
-      const deleteIds = currentVariants
-        .filter(v => !keepVariantIds.includes(v.id))
-        .map(v => v.id);
-
-      if (deleteIds.length > 0) {
-        await this.prisma.productVariant.deleteMany({
-          where: {
-            id: { in: deleteIds }
-          }
-        });
-      }
+      });
+      return this.findOne(id);
+    } catch (error) {
+      this.throwProductWriteError(error);
     }
-
-    return this.findOne(id);
   }
 
   async remove(id: string) {
@@ -313,61 +321,47 @@ function generateVariantCombinations(
   initialStock: number
 ) {
   const variants = [];
-  const stock = initialStock !== undefined ? initialStock : 10;
-
-  const sanitizeForSku = (str: string) => {
-    return str.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  };
+  const stock = Number.isInteger(initialStock) && initialStock >= 0 ? initialStock : 10;
 
   if (sizes.length > 0 && colors.length > 0) {
     for (const size of sizes) {
       for (const color of colors) {
-        variants.push({
-          name: `${productName} - ${size} / ${color.name}`,
-          sku: `${productSku}-${sanitizeForSku(size)}-${sanitizeForSku(color.name)}`,
-          price: productPrice,
-          stock,
-          size,
-          color: color.name,
-          colorHex: color.hex,
-        });
+        variants.push(buildVariant(productName, productSku, productPrice, size, color.name, color.hex, stock));
       }
     }
   } else if (sizes.length > 0) {
     for (const size of sizes) {
-      variants.push({
-        name: `${productName} - ${size}`,
-        sku: `${productSku}-${sanitizeForSku(size)}`,
-        price: productPrice,
-        stock,
-        size,
-        color: null,
-        colorHex: null,
-      });
+      variants.push(buildVariant(productName, productSku, productPrice, size, null, null, stock));
     }
   } else if (colors.length > 0) {
     for (const color of colors) {
-      variants.push({
-        name: `${productName} - ${color.name}`,
-        sku: `${productSku}-${sanitizeForSku(color.name)}`,
-        price: productPrice,
-        stock,
-        size: null,
-        color: color.name,
-        colorHex: color.hex,
-      });
+      variants.push(buildVariant(productName, productSku, productPrice, null, color.name, color.hex, stock));
     }
   } else {
-    variants.push({
-      name: `${productName} - Estándar`,
-      sku: `${productSku}-STD`,
-      price: productPrice,
-      stock,
-      size: null,
-      color: null,
-      colorHex: null,
-    });
+    variants.push(buildVariant(productName, productSku, productPrice, null, null, null, stock));
   }
 
   return variants;
+}
+
+function buildVariant(
+  productName: string,
+  productSku: string,
+  productPrice: number,
+  size: string | null,
+  color: string | null,
+  colorHex: string | null | undefined,
+  stock: number,
+) {
+  const sanitizeForSku = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'STD';
+  const suffix = [size && sanitizeForSku(size), color && sanitizeForSku(color)].filter(Boolean).join('-') || 'STD';
+  return {
+    name: `${productName} - ${[size, color].filter(Boolean).join(' / ') || 'Estándar'}`,
+    sku: `${productSku}-${suffix}`,
+    price: productPrice,
+    stock,
+    size,
+    color,
+    colorHex: color ? colorHex || '#000000' : null,
+  };
 }

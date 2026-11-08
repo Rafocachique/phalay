@@ -92,6 +92,10 @@ export default function ProductoPageClient({ product }: { product: any }) {
     });
   }, [dbVariants, selectedSize, selectedColor]);
 
+  const displayedPrice = activeVariant
+    ? Number(activeVariant.price)
+    : parsedPrice;
+
   const stockAvailable = activeVariant ? activeVariant.stock : (currentProduct.stock || 10);
   const isOutOfStock = dbVariants.length > 0 && (!activeVariant || activeVariant.stock <= 0);
 
@@ -117,7 +121,7 @@ export default function ProductoPageClient({ product }: { product: any }) {
     addItem({
       id: currentProduct.id,
       name: currentProduct.name,
-      price: parsedPrice,
+      price: displayedPrice,
       quantity: 1,
       imageUrl: mainImageUrl,
       size: selectedSize || undefined,
@@ -132,7 +136,7 @@ export default function ProductoPageClient({ product }: { product: any }) {
     addItem({
       id: currentProduct.id,
       name: currentProduct.name,
-      price: parsedPrice,
+      price: displayedPrice,
       quantity: 1,
       imageUrl: mainImageUrl,
       size: selectedSize || undefined,
@@ -182,7 +186,7 @@ export default function ProductoPageClient({ product }: { product: any }) {
 
             <h1 className="text-3xl font-serif text-gray-900 mb-2">{currentProduct.name}</h1>
             <div className="flex items-center gap-4 mb-6">
-              <span className="text-2xl font-bold text-gray-900">S/ {parsedPrice.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-gray-900">S/ {displayedPrice.toFixed(2)}</span>
               {reviewCount > 0 && (
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <span className="text-yellow-500 text-sm">{'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}</span>
@@ -286,7 +290,7 @@ export default function ProductoPageClient({ product }: { product: any }) {
                 ) : added ? (
                   <><Check size={18} /> ¡Añadido a la Bolsa!</>
                 ) : (
-                  <><ShoppingBag size={18} /> Añadir a la Bolsa</>
+                  <><ShoppingBag size={18} /> Añadir esta talla a la Bolsa</>
                 )}
               </button>
             </div>

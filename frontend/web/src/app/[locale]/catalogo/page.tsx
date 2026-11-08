@@ -11,6 +11,7 @@ interface PageProps {
     search?: string;
     talla?: string;
     color?: string;
+    publico?: string;
     maxPrice?: string;
     sort?: string;
   }>;
@@ -22,6 +23,7 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
   const categoryName = params.categoria; // Can be comma-separated list: "Blusas,Casacas"
   const sizeFilter = params.talla;
   const colorFilter = params.color;
+  const audienceFilter = params.publico;
   const sortFilter = params.sort || 'tendencias';
   const searchQuery = params.search;
 
@@ -71,13 +73,11 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
   }
 
   // Extract unique sizes and colors dynamically from all active products
-  const standardSizes = ['XS', 'S', 'M', 'L', 'XL'];
   const extractedSizes = Array.from(
     new Set(products.flatMap((p: any) => p.variants?.map((v: any) => v.size) || []).filter(Boolean))
   ) as string[];
-  const sizes = extractedSizes.length > 0 
-    ? standardSizes.filter(s => extractedSizes.includes(s) || extractedSizes.some(es => es.toUpperCase() === s))
-    : standardSizes;
+  const sizes = extractedSizes.sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+  const audiences = Array.from(new Set(products.flatMap((product: any) => (product.tags || []).filter((tag: string) => tag.startsWith('audience:')).map((tag: string) => tag.replace('audience:', ''))))).sort();
 
   const colorsMap = new Map<string, string>();
   products.forEach((p: any) => {
@@ -122,6 +122,10 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
     );
   }
 
+  if (audienceFilter) {
+    displayProducts = displayProducts.filter((product: any) => (product.tags || []).includes(`audience:${audienceFilter}`));
+  }
+
   // 5. Filter by price using the active or dynamic maxPrice
   displayProducts = displayProducts.filter((p: any) => 
     parseFloat(p.price) <= maxPriceFilter
@@ -157,6 +161,7 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
     if (paramToRemove !== 'categoria' && categoryName) queryParts.push(`categoria=${encodeURIComponent(categoryName)}`);
     if (paramToRemove !== 'talla' && sizeFilter) queryParts.push(`talla=${sizeFilter}`);
     if (paramToRemove !== 'color' && colorFilter) queryParts.push(`color=${encodeURIComponent(colorFilter)}`);
+    if (paramToRemove !== 'publico' && audienceFilter) queryParts.push(`publico=${encodeURIComponent(audienceFilter)}`);
     if (paramToRemove !== 'maxPrice' && params.maxPrice) queryParts.push(`maxPrice=${params.maxPrice}`);
     if (sortFilter !== 'tendencias') queryParts.push(`sort=${sortFilter}`);
     if (paramToRemove !== 'search' && searchQuery) queryParts.push(`search=${encodeURIComponent(searchQuery)}`);
@@ -174,6 +179,7 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
     if (collectionId) queryParts.push(`coleccion=${collectionId}`);
     if (sizeFilter) queryParts.push(`talla=${sizeFilter}`);
     if (colorFilter) queryParts.push(`color=${encodeURIComponent(colorFilter)}`);
+    if (audienceFilter) queryParts.push(`publico=${encodeURIComponent(audienceFilter)}`);
     if (params.maxPrice) queryParts.push(`maxPrice=${params.maxPrice}`);
     if (sortFilter !== 'tendencias') queryParts.push(`sort=${sortFilter}`);
     if (searchQuery) queryParts.push(`search=${encodeURIComponent(searchQuery)}`);
@@ -181,7 +187,7 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
     return queryParts.length > 0 ? `/catalogo?${queryParts.join('&')}` : '/catalogo';
   };
 
-  const hasActiveFilters = collectionId || selectedCategories.length > 0 || sizeFilter || colorFilter || (params.maxPrice && parseFloat(params.maxPrice) < maxAvailablePrice) || searchQuery;
+  const hasActiveFilters = collectionId || selectedCategories.length > 0 || sizeFilter || colorFilter || audienceFilter || (params.maxPrice && parseFloat(params.maxPrice) < maxAvailablePrice) || searchQuery;
 
   // Build a nice heading title depending on active selections
   const getPageHeading = () => {
@@ -201,6 +207,7 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
           categories={categories}
           sizes={sizes}
           colors={colors}
+          audiences={audiences}
           minPrice={minAvailablePrice}
           maxPrice={maxAvailablePrice}
         />
@@ -256,6 +263,7 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
                   <Link href={getBadgeLink('color')} className="hover:bg-red-200 hover:text-red-800 bg-white/50 text-[#8B5A5A] w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black transition-colors">&times;</Link>
                 </span>
               )}
+              {audienceFilter && <span className="inline-flex items-center gap-2 bg-[#FBEFEF] text-[#8B5A5A] px-4 py-1.5 rounded-full text-xs font-bold border border-[#8B5A5A]/10 shadow-sm">Para: {audienceFilter}<Link href={getBadgeLink('publico')} className="hover:bg-red-200 hover:text-red-800 bg-white/50 text-[#8B5A5A] w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black transition-colors">&times;</Link></span>}
               {params.maxPrice && parseFloat(params.maxPrice) < maxAvailablePrice && (
                 <span className="inline-flex items-center gap-2 bg-[#FBEFEF] text-[#8B5A5A] px-4 py-1.5 rounded-full text-xs font-bold border border-[#8B5A5A]/10 shadow-sm">
                   Precio máx: S/ {params.maxPrice}

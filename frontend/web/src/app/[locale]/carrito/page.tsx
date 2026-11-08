@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { Trash2, ShoppingBag, ArrowRight, Package } from 'lucide-react';
-import { useCartStore } from '@/store/useCartStore';
+import { getCartItemKey, useCartStore } from '@/store/useCartStore';
 
 export default function CarritoPage() {
   const { items, removeItem, updateQuantity, clearCart } = useCartStore();
@@ -35,8 +35,10 @@ export default function CarritoPage() {
         <div className="flex flex-col lg:flex-row gap-12">
           {/* Lista de productos */}
           <div className="flex-[2] space-y-6">
-            {items.map((item) => (
-              <div key={`${item.id}-${item.size}-${item.color}`} className="bg-white border border-gray-100 p-6 flex gap-6">
+            {items.map((item) => {
+              const lineKey = getCartItemKey(item);
+              return (
+              <div key={lineKey} className="bg-white border border-gray-100 p-6 flex gap-6">
                 <div className="w-24 h-32 bg-gray-100 overflow-hidden flex-shrink-0">
                   <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                 </div>
@@ -44,7 +46,7 @@ export default function CarritoPage() {
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-gray-900 text-sm">{item.name}</h3>
                     <button
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeItem(lineKey)}
                       className="text-gray-400 hover:text-red-500 transition-colors"
                     >
                       <Trash2 size={16} />
@@ -57,12 +59,12 @@ export default function CarritoPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center border border-gray-200">
                       <button
-                        onClick={() => item.quantity > 1 ? updateQuantity(item.id, item.quantity - 1) : removeItem(item.id)}
+                        onClick={() => item.quantity > 1 ? updateQuantity(lineKey, item.quantity - 1) : removeItem(lineKey)}
                         className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
                       >−</button>
                       <span className="w-10 text-center text-sm font-bold">{item.quantity}</span>
                       <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => updateQuantity(lineKey, item.quantity + 1)}
                         className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
                       >+</button>
                     </div>
@@ -70,7 +72,8 @@ export default function CarritoPage() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             <button
               onClick={clearCart}

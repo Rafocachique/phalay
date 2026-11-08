@@ -203,6 +203,7 @@ export default function AdminShell({
   // El equipo sólo lo administra un SUPER_ADMIN.
   if (user?.role === 'SUPER_ADMIN') {
     directItems.push({ name: 'Usuarios', href: '/users', icon: <Users size={17} strokeWidth={2.5} /> });
+    directItems.push({ name: 'Pasarela', href: '/pasarela', icon: <Wallet size={17} strokeWidth={2.5} /> });
   }
 
   const isAuthPage = pathname === '/login' || pathname === '/register';

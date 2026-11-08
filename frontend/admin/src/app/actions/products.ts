@@ -15,6 +15,7 @@ export async function createProduct(formData: FormData) {
   const tagsJson = formData.get('tags') as string;
   const categoryId = formData.get('categoryId') as string;
   const collectionIdsJson = formData.get('collectionIds') as string;
+  const variantsJson = formData.get('variants') as string;
 
   if (!name || !price || !sku) {
     return { error: 'Nombre, precio y SKU son requeridos.' };
@@ -23,6 +24,7 @@ export async function createProduct(formData: FormData) {
   const imageUrls = imagesJson ? JSON.parse(imagesJson) : [];
   const tags = tagsJson ? JSON.parse(tagsJson) : [];
   const collectionIds = collectionIdsJson ? JSON.parse(collectionIdsJson) : [];
+  const variants = variantsJson ? JSON.parse(variantsJson) : undefined;
 
   const payload = {
     name,
@@ -35,6 +37,7 @@ export async function createProduct(formData: FormData) {
     tags,
     categoryId: categoryId || undefined,
     collectionIds,
+    variants,
   };
 
   try {
@@ -50,7 +53,7 @@ export async function createProduct(formData: FormData) {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      return { error: err.message || 'Error al crear el producto' };
+      return { error: Array.isArray(err.message) ? err.message.join('. ') : err.message || 'Error al crear el producto' };
     }
   } catch (error) {
     return { error: 'Error de conexión con la API' };
@@ -107,7 +110,7 @@ export async function updateProduct(id: string, formData: FormData) {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      return { error: err.message || 'Error al actualizar el producto' };
+      return { error: Array.isArray(err.message) ? err.message.join('. ') : err.message || 'Error al actualizar el producto' };
     }
   } catch (error) {
     return { error: 'Error de conexión con la API' };

@@ -43,6 +43,17 @@ export class CreateProductDto {
   @IsOptional()
   collectionIds?: string[];
 
+  // El stock se administra por combinación de talla/color. Se mantiene como
+  // objeto flexible para no bloquear tallas como "4", "10" o "Dama M".
+  @IsArray()
+  @IsOptional()
+  variants?: Array<{
+    size?: string;
+    color?: string;
+    colorHex?: string;
+    stock?: number;
+  }>;
+
   @IsNumber()
   @Min(0)
   @IsOptional()

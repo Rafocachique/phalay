@@ -19,6 +19,7 @@ interface CatalogFiltersProps {
   categories: Category[];
   sizes: string[];
   colors: ColorOption[];
+  audiences: string[];
   minPrice: number;
   maxPrice: number;
 }
@@ -27,6 +28,7 @@ export default function CatalogFilters({
   categories,
   sizes,
   colors,
+  audiences,
   minPrice,
   maxPrice,
 }: CatalogFiltersProps) {
@@ -38,6 +40,7 @@ export default function CatalogFilters({
   const currentCategory = searchParams.get('categoria') || '';
   const currentSize = searchParams.get('talla') || '';
   const currentColor = searchParams.get('color') || '';
+  const currentAudience = searchParams.get('publico') || '';
   const currentMaxPrice = searchParams.get('maxPrice') 
     ? parseInt(searchParams.get('maxPrice')!) 
     : maxPrice;
@@ -111,6 +114,8 @@ export default function CatalogFilters({
       updateQueryParam({ color: colorName });
     }
   };
+
+  const handleAudienceClick = (audience: string) => updateQueryParam({ publico: currentAudience === audience ? null : audience });
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalMaxPrice(parseInt(e.target.value));
@@ -228,6 +233,13 @@ export default function CatalogFilters({
           })}
         </div>
       </div>
+
+      {audiences.length > 0 && <div>
+        <h3 className="text-xs font-bold text-gray-700 tracking-widest uppercase mb-4">Para quién</h3>
+        <div className="flex flex-wrap gap-2">
+          {audiences.map((audience) => <button key={audience} onClick={() => handleAudienceClick(audience)} className={`rounded-xl px-3 py-2 text-xs font-bold border transition-all ${currentAudience === audience ? 'bg-black border-black text-white' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-950'}`}>{audience}</button>)}
+        </div>
+      </div>}
 
       {/* Precio */}
       <div>

@@ -51,6 +51,17 @@ export async function getStoreSettings() {
   }
 }
 
+export async function getPaymentGatewayStatus() {
+  try {
+    const authHeaders = await getAuthHeader();
+    const response = await fetch(`${API_BASE_URL}/stores/payment-gateway/status`, { headers: authHeaders, cache: 'no-store' });
+    if (!response.ok) return { error: 'No se pudo leer el estado de la pasarela.' };
+    return response.json();
+  } catch {
+    return { error: 'No se pudo conectar con la pasarela.' };
+  }
+}
+
 export async function updatePaymentSettings(data: {
   paymentCardEnabled?: boolean;
   paymentYapeEnabled?: boolean;

@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
   // Gestión del equipo: crear cuentas (/register) y ver/editar usuarios (/users)
   // son exclusivos del SUPER_ADMIN. Ocultar el menú no basta: un ADMIN podría
   // escribir la URL a mano.
-  const superAdminOnlyRoutes = ['/register', '/users'];
+  const superAdminOnlyRoutes = ['/register', '/users', '/pasarela'];
   const requiresSuperAdmin = superAdminOnlyRoutes.some(route => pathname.startsWith(route));
 
   let response = NextResponse.next({ request });

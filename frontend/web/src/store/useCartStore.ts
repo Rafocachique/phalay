@@ -12,11 +12,16 @@ export interface CartItem {
   variantId?: string;
 }
 
+// La identidad de una línea incluye su variante. Así un mismo producto puede
+// estar en la bolsa con talla 4 y talla 10 sin que una acción afecte a la otra.
+export const getCartItemKey = (item: Pick<CartItem, 'id' | 'variantId' | 'size' | 'color'>) =>
+  [item.id, item.variantId || '', item.size || '', item.color || ''].join('::');
+
 interface CartStore {
   items: CartItem[];
   addItem: (item: CartItem) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  removeItem: (lineKey: string) => void;
+  updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
   getTotalItems: () => number;
 }
@@ -51,15 +56,15 @@ export const useCartStore = create<CartStore>()(
           return { items: [...state.items, newItem] };
         });
       },
-      removeItem: (id) => {
+      removeItem: (lineKey) => {
         set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
+          items: state.items.filter((item) => getCartItemKey(item) !== lineKey),
         }));
       },
-      updateQuantity: (id, quantity) => {
+      updateQuantity: (lineKey, quantity) => {
         set((state) => ({
           items: state.items.map((item) =>
-            item.id === id ? { ...item, quantity } : item
+            getCartItemKey(item) === lineKey ? { ...item, quantity } : item
           ),
         }));
       },

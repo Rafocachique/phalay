@@ -68,6 +68,20 @@ export class StoresService {
     };
   }
 
+  /** Estado seguro de Culqi: sólo confirma configuración, nunca expone llaves. */
+  getPaymentGatewayStatus() {
+    const secret = process.env.CULQI_SECRET_KEY || '';
+    const publicKey = process.env.CULQI_PUBLIC_KEY || process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY || '';
+    const mode = secret.startsWith('sk_live_') ? 'PRODUCTION' : secret.startsWith('sk_test_') ? 'TEST' : 'UNCONFIGURED';
+    return {
+      provider: 'CULQI',
+      mode,
+      secretKeyConfigured: Boolean(secret),
+      publicKeyConfigured: Boolean(publicKey),
+      webhookConfigured: Boolean(process.env.CULQI_WEBHOOK_SECRET),
+    };
+  }
+
   async updateStore(data: any) {
     const settings = await this.prisma.systemSettings.findFirst();
     if (!settings) return null;

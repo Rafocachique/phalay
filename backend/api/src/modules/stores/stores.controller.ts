@@ -22,6 +22,14 @@ export class StoresController {
     return this.storesService.getStoreAdmin();
   }
 
+  @Get('payment-gateway/status')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(['SUPER_ADMIN'])
+  @ApiBearerAuth()
+  async paymentGatewayStatus() {
+    return this.storesService.getPaymentGatewayStatus();
+  }
+
   @Patch()
   @UseGuards(JwtGuard, RolesGuard)
   @Roles(['ADMIN', 'SUPER_ADMIN'])

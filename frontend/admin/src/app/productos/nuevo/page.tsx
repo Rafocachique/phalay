@@ -11,14 +11,14 @@ import { ChevronLeft, Save, Plus, Trash2, Info, RefreshCw } from 'lucide-react';
 type ColorItem = { name: string; hex: string };
 type VariantStock = Record<string, number | ''>; // key = "size:color"
 
-const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL'];
+const COMMON_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2', '4', '6', '8', '10', '12', '14'];
+const MAX_IMAGES = 12;
+const AUDIENCES = ['Mujer', 'Hombre', 'Niña', 'Niño', 'Unisex', 'Familiar'];
 
 export default function NuevoProductoPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
-  const [image1, setImage1] = useState('');
-  const [image2, setImage2] = useState('');
-  const [image3, setImage3] = useState('');
+  const [images, setImages] = useState<string[]>(['']);
 
   // Inventario base (sincroniza todos al cambiar)
 
@@ -32,6 +32,8 @@ export default function NuevoProductoPage() {
 
   // Stock por variante: key "S:Rosa Pastel" -> stock number
   const [variantStocks, setVariantStocks] = useState<VariantStock>({});
+  const [newSize, setNewSize] = useState('');
+  const [selectedAudiences, setSelectedAudiences] = useState<string[]>(['Mujer']);
 
   // Add custom color
   const [newColorName, setNewColorName] = useState('');
@@ -101,13 +103,14 @@ export default function NuevoProductoPage() {
     }
 
     setSubmitting(true);
-    const urls = [image1, image2, image3].filter(Boolean);
+    const urls = images.filter(Boolean);
     formData.set('images', JSON.stringify(urls));
 
     // Tags for sizes and colors
     const tags = [
       ...selectedSizes.map(s => `size:${s}`),
       ...selectedColors.map(c => `color:${c.name}:${c.hex}`),
+      ...selectedAudiences.map(audience => `audience:${audience}`),
     ];
     formData.set('tags', JSON.stringify(tags));
 
@@ -213,7 +216,7 @@ export default function NuevoProductoPage() {
                   <span className="text-xs text-gray-400">Clic para activar/desactivar</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {AVAILABLE_SIZES.map((talla) => {
+                  {COMMON_SIZES.map((talla) => {
                     const isSelected = selectedSizes.includes(talla);
                     return (
                       <button key={talla} type="button"
@@ -222,6 +225,46 @@ export default function NuevoProductoPage() {
                         {talla}
                       </button>
                     );
+                  })}
+                  {selectedSizes.filter((size) => !COMMON_SIZES.includes(size)).map((size) => (
+                    <button key={size} type="button" onClick={() => setSelectedSizes((current) => current.filter((value) => value !== size))} className="h-10 rounded-xl font-bold text-sm border bg-[#FBEFEF] text-[#8B5A5A] border-[#8B5A5A] px-3 transition-all flex items-center gap-2" title="Quitar talla personalizada">
+                      {size} <Trash2 size={13} />
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={newSize}
+                    onChange={(event) => setNewSize(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') { event.preventDefault(); }
+                    }}
+                    placeholder="Talla personalizada: Ej. Niño 3, 16, Dama única"
+                    className="flex-1 bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900"
+                  />
+                  <button type="button" onClick={() => {
+                    const size = newSize.trim();
+                    if (!size) return;
+                    if (selectedSizes.some((current) => current.toLowerCase() === size.toLowerCase())) {
+                      toast.error('Esa talla ya está agregada.');
+                      return;
+                    }
+                    setSelectedSizes((current) => [...current, size]);
+                    setNewSize('');
+                  }} className="bg-[#8B5A5A]/10 hover:bg-[#8B5A5A]/20 text-[#8B5A5A] px-5 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-1">
+                    <Plus size={15} /> Agregar talla
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">Puedes usar tallas de niño, números o nombres propios. Para un pack familiar, la clienta agrega cada talla elegida a la bolsa por separado.</p>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-3"><h3 className="text-sm font-bold text-gray-900">¿Para quién es esta prenda?</h3><span className="text-xs text-gray-400">Puedes elegir más de uno para packs</span></div>
+                <div className="flex flex-wrap gap-2">
+                  {AUDIENCES.map((audience) => {
+                    const selected = selectedAudiences.includes(audience);
+                    return <button key={audience} type="button" onClick={() => setSelectedAudiences((current) => selected ? current.filter((value) => value !== audience) : [...current, audience])} className={`h-10 rounded-xl px-4 font-bold text-sm border transition-all ${selected ? 'bg-[#FBEFEF] text-[#8B5A5A] border-[#8B5A5A]' : 'bg-white text-gray-500 border-gray-200 hover:border-[#8B5A5A]/50'}`}>{audience}</button>;
                   })}
                 </div>
               </div>
@@ -426,15 +469,26 @@ export default function NuevoProductoPage() {
                 <p className="text-xs text-gray-400 mt-1">Sube fotos reales de tus prendas. JPG, PNG y WebP.</p>
               </div>
               <div className="space-y-4">
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <ImageUpload name="main_image" label="Imagen Principal (Catálogo)" currentUrl={image1} onUrlChange={setImage1} />
-                </div>
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <ImageUpload name="image_2" label="Imagen Detalle 1 (Opcional)" currentUrl={image2} onUrlChange={setImage2} />
-                </div>
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <ImageUpload name="image_3" label="Imagen Detalle 2 (Opcional)" currentUrl={image3} onUrlChange={setImage3} />
-                </div>
+                {images.map((image, index) => (
+                  <div key={index} className="relative p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <ImageUpload
+                      name={`image_${index + 1}`}
+                      label={index === 0 ? 'Imagen principal (catálogo)' : `Imagen detalle ${index}`}
+                      currentUrl={image}
+                      onUrlChange={(url) => setImages((current) => current.map((value, currentIndex) => currentIndex === index ? url : value))}
+                    />
+                    {images.length > 1 && (
+                      <button type="button" onClick={() => setImages((current) => current.filter((_, currentIndex) => currentIndex !== index))} className="mt-3 text-xs font-bold text-red-500 hover:text-red-700">
+                        Quitar esta imagen
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <button type="button" onClick={() => setImages((current) => [...current, ''])} className="w-full border border-dashed border-[#8B5A5A]/40 rounded-xl px-4 py-3 text-sm font-bold text-[#8B5A5A] hover:bg-[#8B5A5A]/5 transition-colors flex items-center justify-center gap-2">
+                    <Plus size={16} /> Agregar otra imagen ({images.length}/{MAX_IMAGES})
+                  </button>
+                )}
               </div>
             </div>
           </div>
