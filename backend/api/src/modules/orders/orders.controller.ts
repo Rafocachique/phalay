@@ -94,6 +94,14 @@ export class OrdersController {
     return this.ordersService.reviewManualPayment(id, approved, user.id);
   }
 
+  @Post(':id/shipping-payment')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Solicitar el pago manual de un envío cotizado' })
+  async createShippingPayment(@Param('id') id: string, @GetUser() user: any) {
+    return this.ordersService.createShippingPayment(id, user.id);
+  }
+
   @Patch(':id/status')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles(['SELLER', 'ADMIN', 'SUPER_ADMIN'])

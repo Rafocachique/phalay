@@ -627,9 +627,9 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
                       className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-gray-900"
                       placeholder="Av. Larco 1234, Miraflores" />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
-                      <label className="text-xs font-bold uppercase tracking-widest text-gray-700 block mb-1">Zona de Envío</label>
+                      <label className="text-xs font-bold uppercase tracking-widest text-gray-700 block mb-1.5">¿Cómo recibes tu pedido?</label>
                       <select
                         required
                         value={form.destinationType}
@@ -639,13 +639,13 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
                           // Al cambiar de zona, el destino puntual elegido antes ya no aplica.
                           destinationId: '',
                         })}
-                        className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-gray-900 bg-white disabled:bg-gray-100"
+                        className="w-full min-w-0 border border-gray-200 px-4 py-3.5 text-sm text-gray-900 focus:outline-none focus:border-[#8B5A5A] focus:ring-2 focus:ring-[#8B5A5A]/10 bg-white disabled:bg-gray-100 transition-colors"
                         disabled={loadingDestinations}
                       >
                         <option value="">{loadingDestinations ? 'Cargando...' : 'Selecciona...'}</option>
-                        <option value="LIMA_METROPOLITANA">Lima Metropolitana (Delivery)</option>
-                        <option value="PROVINCIA">Envío a Provincia (Agencia)</option>
-                        <option value="OTHER">No encuentro mi destino</option>
+                        <option value="LIMA_METROPOLITANA">Lima Metropolitana — entrega a domicilio</option>
+                        <option value="PROVINCIA">Envío a provincia — recojo en agencia</option>
+                        <option value="OTHER">Mi destino no aparece en la lista</option>
                       </select>
                     </div>
 
@@ -660,7 +660,7 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
                           required
                           value={form.destinationId}
                           onChange={e => setForm({ ...form, destinationId: e.target.value })}
-                          className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-gray-900 bg-white"
+                          className="w-full min-w-0 border border-gray-200 px-4 py-3.5 text-sm text-gray-900 focus:outline-none focus:border-[#8B5A5A] focus:ring-2 focus:ring-[#8B5A5A]/10 bg-white transition-colors"
                         >
                           <option value="">Selecciona...</option>
                           {destinationsInZone.map(d => (
@@ -684,8 +684,8 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
                       <input required type="text" value={form.missingDestinationName} onChange={e => setForm({ ...form, missingDestinationName: e.target.value })}
                         className="w-full border border-orange-200 px-4 py-3 text-sm focus:outline-none focus:border-orange-500 mb-2"
                         placeholder="Ej. Cajamarca - Chota" />
-                      <p className="text-xs text-orange-800">
-                        Te contactaremos para cotizar el costo de envío a este destino. Podrás pagar el envío después de que confirmemos la cobertura.
+                      <p className="text-xs text-orange-800 leading-relaxed">
+                        Primero pagarás solamente las prendas. Cuando confirmemos la cobertura y el costo, verás un botón en <strong>Mis pedidos</strong> para pagar el envío por separado.
                       </p>
                     </div>
                   )}
@@ -881,8 +881,8 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
               <div className="border-t border-gray-100 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>S/ {total.toFixed(2)}</span></div>
                 <div className="flex justify-between text-gray-500">
-                  <span>Envío {isOther ? '(Por cotizar)' : selectedDestination ? (selectedDestination.type === 'PROVINCIA' ? `(${selectedDestination.department})` : '(Lima)') : ''}</span>
-                  <span>{isOther ? 'S/ 0.00' : `S/ ${shipping.toFixed(2)}`}</span>
+                  <span>{isOther ? 'Envío pendiente de cotización' : selectedDestination?.type === 'PROVINCIA' ? `Envío a ${selectedDestination.department}` : 'Envío a Lima Metropolitana'}</span>
+                  <span>{isOther ? 'Se paga después' : `S/ ${shipping.toFixed(2)}`}</span>
                 </div>
                 <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-100">
                   <span>Total</span><span>S/ {grandTotal.toFixed(2)}</span>

@@ -364,6 +364,9 @@ export class OrdersService {
           paymentMethod: method.toUpperCase(),
           subtotal,
           shippingCost,
+          // Cuando el destino se conoce desde el checkout, el flete forma
+          // parte del pago inicial. Un destino cotizado después queda aparte.
+          isShippingPaid: Boolean(destination),
           total,
           shippingDestinationId: shippingDestinationId || null,
           currency: 'PEN',
@@ -552,30 +555,35 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Pedido no encontrado');
 
-    if (order.paymentStatus === PaymentStatus.COMPLETED && approved) {
-      throw new BadRequestException('Este pedido ya figura como pagado.');
-    }
-
     return this.prisma.$transaction(async (tx) => {
       // Esta acción sólo es para el QR/WhatsApp. Un miembro del equipo nunca
       // debe poder marcar como pagado un pedido cuya confirmación corresponde
       // a Culqi.
       const manualPayment = await tx.payment.findFirst({
-        where: { orderId, method: 'TRANSFERENCIA' },
+        where: {
+          orderId,
+          method: 'TRANSFERENCIA',
+          status: { in: [PaymentTransactionStatus.INITIATED, PaymentTransactionStatus.FAILED] },
+        },
+        orderBy: { createdAt: 'asc' },
       });
       if (!manualPayment) {
-        throw new BadRequestException('Este pedido no usa pago manual.');
+        throw new BadRequestException('Este pedido no usa pago manual o no tiene uno pendiente.');
       }
-      if (manualPayment.status === PaymentTransactionStatus.COMPLETED) {
-        throw new BadRequestException('Este pedido ya figura como pagado.');
-      }
+
+      const isShippingPayment = (manualPayment.metadata as { purpose?: string } | null)?.purpose === 'SHIPPING';
 
       const updated = await tx.order.update({
         where: { id: orderId },
         data: {
-          paymentStatus: approved ? PaymentStatus.COMPLETED : PaymentStatus.FAILED,
-          // Al confirmar el pago el pedido queda listo para prepararse.
-          status: approved && order.status === OrderStatus.PENDING ? OrderStatus.CONFIRMED : order.status,
+          // Aprobar el flete no debe modificar el estado del pago ya hecho
+          // por las prendas.
+          ...(isShippingPayment
+            ? { isShippingPaid: approved }
+            : {
+                paymentStatus: approved ? PaymentStatus.COMPLETED : PaymentStatus.FAILED,
+                status: approved && order.status === OrderStatus.PENDING ? OrderStatus.CONFIRMED : order.status,
+              }),
         },
       });
 
@@ -590,9 +598,13 @@ export class OrdersService {
         data: {
           orderId,
           status: updated.status,
-          description: approved
-            ? `Pago verificado por el equipo. Monto confirmado: S/ ${parseFloat(order.total.toString()).toFixed(2)}.`
-            : 'El pago no pudo ser verificado. Se contactará a la clienta.',
+          description: isShippingPayment
+            ? approved
+              ? `Pago de envío confirmado. Monto: S/ ${manualPayment.amount.toString()}.`
+              : 'El pago de envío no pudo ser verificado.'
+            : approved
+              ? `Pago verificado por el equipo. Monto confirmado: S/ ${parseFloat(order.total.toString()).toFixed(2)}.`
+              : 'El pago no pudo ser verificado. Se contactará a la clienta.',
         },
       });
 
@@ -610,6 +622,60 @@ export class OrdersService {
     });
   }
 
+  /** Crea o recupera el pago manual exclusivo de un envío cotizado. */
+  async createShippingPayment(orderId: string, customerId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, customerId },
+      include: {
+        missingRequests: { select: { status: true } },
+        payments: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+    if (order.paymentStatus !== PaymentStatus.COMPLETED) {
+      throw new BadRequestException('Primero debe confirmarse el pago de las prendas.');
+    }
+    if (!order.shippingDestinationId || Number(order.shippingCost) <= 0) {
+      throw new BadRequestException('El envío todavía no ha sido cotizado.');
+    }
+    if (!order.missingRequests.some((request) => request.status === 'RESOLVED')) {
+      throw new BadRequestException('El envío de este pedido ya estaba incluido en el pago inicial.');
+    }
+    if (order.isShippingPaid) {
+      throw new BadRequestException('El envío de este pedido ya figura como pagado.');
+    }
+
+    const existing = order.payments.find((payment) =>
+      (payment.metadata as { purpose?: string } | null)?.purpose === 'SHIPPING' &&
+      payment.status !== PaymentTransactionStatus.CANCELLED,
+    );
+    if (existing) return { payment: existing, order };
+
+    const payment = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.payment.create({
+        data: {
+          orderId: order.id,
+          customerId,
+          amount: order.shippingCost,
+          currency: order.currency,
+          method: 'TRANSFERENCIA',
+          status: PaymentTransactionStatus.INITIATED,
+          metadata: { purpose: 'SHIPPING' },
+        },
+      });
+      await tx.orderTimeline.create({
+        data: {
+          orderId: order.id,
+          status: order.status,
+          description: `Pago de envío solicitado por S/ ${Number(order.shippingCost).toFixed(2)}.`,
+        },
+      });
+      return created;
+    });
+
+    return { payment, order };
+  }
+
   async findByEmailAndOrderNumber(email: string, orderNumber: string) {
     return this.prisma.order.findFirst({
       where: {
@@ -620,6 +686,7 @@ export class OrdersService {
         items: true,
         address: true,
         destination: true,
+        missingRequests: { select: { status: true } },
         timeline: { orderBy: { createdAt: 'asc' } },
       },
     });
@@ -650,6 +717,7 @@ export class OrdersService {
         timeline: { orderBy: { createdAt: 'asc' } },
         // El destino permite mostrar la agencia y el tiempo estimado
         destination: { select: { type: true, agencyName: true, estimatedDays: true, department: true, district: true } },
+        missingRequests: { select: { status: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

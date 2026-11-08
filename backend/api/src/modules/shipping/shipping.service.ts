@@ -235,6 +235,9 @@ export class ShippingService {
             shippingType: 'DESTINO_CONFIGURADO',
             shippingCost,
             total,
+            // El pedido se pagó antes con envío S/ 0.00: este nuevo importe
+            // se cobra de forma independiente cuando la clienta lo confirme.
+            isShippingPaid: false,
           },
         });
 

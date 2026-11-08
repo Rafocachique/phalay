@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Package, Truck, CheckCircle2, Clock, MapPin, Search, AlertCircle } from 'lucide-react';
+import { Package, Truck, CheckCircle2, Clock, MapPin, Search, AlertCircle, MessageCircle, WalletCards } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 /** Cómo va el pago, para que la clienta sepa si aún falta validarlo. */
@@ -32,6 +32,10 @@ export default function MisPedidosPage() {
   const [searchError, setSearchError] = useState<string | null>(null);
   // Con sesión iniciada se muestra el historial completo sin buscar nada.
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [shippingPaymentOrderId, setShippingPaymentOrderId] = useState<string | null>(null);
+  const [shippingPaymentLoading, setShippingPaymentLoading] = useState<string | null>(null);
+  const [shippingPaymentError, setShippingPaymentError] = useState<string | null>(null);
+  const [shippingPaymentConfig, setShippingPaymentConfig] = useState<{ orderId: string; amount: number; qrUrl: string; whatsappNumber: string; info: string } | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -106,6 +110,50 @@ export default function MisPedidosPage() {
     setSearchError(null);
     setOrders([]);
   };
+
+  async function requestShippingPayment(order: any) {
+    setShippingPaymentError(null);
+    const { data } = await createClient().auth.getSession();
+    if (!data.session) {
+      setShippingPaymentError('Inicia sesión con la cuenta que realizó esta compra para pagar el envío.');
+      return;
+    }
+
+    setShippingPaymentLoading(order.id);
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+      const [paymentResponse, storeResponse] = await Promise.all([
+        fetch(`${apiBaseUrl}/orders/${order.id}/shipping-payment`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        }),
+        fetch(`${apiBaseUrl}/stores`, { cache: 'no-store' }),
+      ]);
+      const paymentData = await paymentResponse.json().catch(() => ({}));
+      if (!paymentResponse.ok) throw new Error(paymentData.message || 'No pudimos preparar el pago de envío.');
+      const store = storeResponse.ok ? await storeResponse.json() : {};
+      setShippingPaymentOrderId(order.id);
+      setShippingPaymentConfig({
+        orderId: order.id,
+        amount: Number(order.shippingCost),
+        qrUrl: store?.yapeQrUrl || '',
+        whatsappNumber: store?.whatsappNumber || '',
+        info: store?.manualPaymentInfo || '',
+      });
+    } catch (error: any) {
+      setShippingPaymentError(error?.message || 'No pudimos preparar el pago de envío.');
+    } finally {
+      setShippingPaymentLoading(null);
+    }
+  }
+
+  function openShippingWhatsApp(order: any) {
+    if (!shippingPaymentConfig?.whatsappNumber) return;
+    const message = encodeURIComponent(
+      `Hola, acabo de pagar el envío de mi pedido ${order.orderNumber} por S/ ${shippingPaymentConfig.amount.toFixed(2)}. Adjunto mi captura.`,
+    );
+    window.open(`https://wa.me/51${shippingPaymentConfig.whatsappNumber}?text=${message}`, '_blank', 'noopener,noreferrer');
+  }
 
   // Build real-time order timeline
   function buildTimeline(status: string, region: string, agencyName?: string) {
@@ -225,6 +273,12 @@ export default function MisPedidosPage() {
                 order.address?.state,
                 order.destination?.agencyName,
               );
+              const shippingPending = order.paymentStatus === 'COMPLETED'
+                && order.shippingDestinationId
+                && Number(order.shippingCost) > 0
+                && !order.isShippingPaid
+                && order.missingRequests?.some((request: any) => request.status === 'RESOLVED');
+              const paymentPanelOpen = shippingPaymentOrderId === order.id && shippingPaymentConfig;
 
               return (
                 <div key={order.id} className="bg-white border border-gray-100 overflow-hidden rounded-2xl shadow-sm hover:shadow-md transition-all">
@@ -277,6 +331,57 @@ export default function MisPedidosPage() {
                       </div>
                     ))}
                   </div>
+
+                  {shippingPending && (
+                    <div className="mx-6 my-5 rounded-xl border border-[#E8C5C4] bg-[#FFF8F7] p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div className="flex gap-3">
+                          <div className="mt-0.5 rounded-full bg-[#F4DEDC] p-2 text-[#8B5A5A]"><Truck size={17} /></div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">Tu envío ya fue cotizado</p>
+                            <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                              El pago de tus prendas está confirmado. Falta pagar únicamente el envío a <strong>{order.destination?.district || order.destination?.department || 'tu destino'}</strong>.
+                            </p>
+                            <p className="mt-2 text-lg font-black text-[#8B5A5A]">Envío: S/ {Number(order.shippingCost).toFixed(2)}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => requestShippingPayment(order)}
+                          disabled={shippingPaymentLoading === order.id}
+                          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#8B5A5A] px-4 py-3 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-[#704545] disabled:opacity-60"
+                        >
+                          <WalletCards size={15} />
+                          {shippingPaymentLoading === order.id ? 'Preparando...' : 'Pagar envío'}
+                        </button>
+                      </div>
+
+                      {paymentPanelOpen && (
+                        <div className="mt-5 border-t border-[#E8C5C4] pt-5">
+                          <p className="text-xs font-bold uppercase tracking-widest text-[#704545]">Paga sólo el envío y envía tu captura</p>
+                          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+                            {shippingPaymentConfig.qrUrl && (
+                              <img src={shippingPaymentConfig.qrUrl} alt="Código QR para pagar el envío" className="h-32 w-32 border border-[#E8C5C4] bg-white p-1 object-contain" />
+                            )}
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-700">Yapea <strong>S/ {shippingPaymentConfig.amount.toFixed(2)}</strong> y comparte la captura para validar el envío.</p>
+                              {shippingPaymentConfig.info && <p className="mt-1 text-xs text-gray-500">{shippingPaymentConfig.info}</p>}
+                              {shippingPaymentConfig.whatsappNumber ? (
+                                <button onClick={() => openShippingWhatsApp(order)} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#1fb957]">
+                                  <MessageCircle size={15} /> Enviar captura por WhatsApp
+                                </button>
+                              ) : (
+                                <p className="mt-3 text-xs font-medium text-amber-700">La tienda aún no configuró el WhatsApp para recibir comprobantes.</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {shippingPaymentError && (
+                    <p className="mx-6 mb-5 rounded-lg bg-red-50 px-4 py-3 text-xs font-medium text-red-700">{shippingPaymentError}</p>
+                  )}
 
                   {/* Tracking Timeline */}
                   <div className="p-6 bg-gray-50/5">
