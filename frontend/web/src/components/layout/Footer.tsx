@@ -53,9 +53,8 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
                 <a href={settings.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-[#8B5A5A] transition-colors"><Facebook size={20} /></a>
               )}
               {whatsappHref && (
-                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" aria-label="Escríbenos por WhatsApp" title="Escríbenos por WhatsApp" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#1FB957]">
-                  <MessageCircle size={17} fill="currentColor" className="text-white" />
-                  WhatsApp
+                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" aria-label="Escríbenos por WhatsApp" title="Escríbenos por WhatsApp" className="inline-flex h-5 w-5 items-center justify-center text-[#25D366] transition-colors hover:text-[#1FB957]">
+                  <MessageCircle size={20} strokeWidth={2.2} />
                 </a>
               )}
             </div>
