@@ -29,9 +29,18 @@ try {
   // Ignorar en entornos como Vercel donde las variables ya están inyectadas
 }
 
+// Impide que un valor antiguo de Render se inserte en el bundle público.
+// La tienda debe comunicarse únicamente con el API independiente de Vercel.
+if (process.env.VERCEL && /\.onrender\.com/i.test(process.env.NEXT_PUBLIC_API_URL || '')) {
+  process.env.NEXT_PUBLIC_API_URL = 'https://phalay-api.vercel.app/api/v1';
+}
+
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1',
+  },
   // Seguridad
   headers: async () => [
     {

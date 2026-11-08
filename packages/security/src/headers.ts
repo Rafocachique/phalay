@@ -4,7 +4,12 @@
 
 // Origen de la API derivado de env, sin IPs de LAN de desarrollo hardcodeadas.
 function getApiOrigin(): string {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  // Render fue la infraestructura anterior. Nunca debe quedar permitido por
+  // CSP en un despliegue Vercel aunque alguien conserve una variable vieja.
+  const apiUrl = process.env.VERCEL && /\.onrender\.com/i.test(configuredApiUrl)
+    ? 'https://phalay-api.vercel.app/api/v1'
+    : configuredApiUrl;
   try {
     return new URL(apiUrl).origin;
   } catch {

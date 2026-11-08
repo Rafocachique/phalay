@@ -28,7 +28,17 @@ try {
   // Ignorar en entornos como Vercel donde las variables ya están inyectadas
 }
 
+// Evita que una variable heredada del hosting anterior mantenga al panel
+// conectado a Render. La variable correcta debe actualizarse en Vercel, pero
+// este resguardo impide regresiones durante la transición.
+if (process.env.VERCEL && /\.onrender\.com/i.test(process.env.NEXT_PUBLIC_API_URL || '')) {
+  process.env.NEXT_PUBLIC_API_URL = 'https://phalay-api.vercel.app/api/v1';
+}
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1',
+  },
   headers: async () => [
     {
       source: '/(.*)',
