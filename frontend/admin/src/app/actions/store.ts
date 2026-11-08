@@ -84,6 +84,11 @@ export async function updatePaymentSettings(data: {
 export async function updateStoreSettings(data: {
   storeName: string;
   storeDescription: string;
+  legalName: string;
+  businessRuc: string;
+  businessAddress: string;
+  contactEmail: string;
+  contactPhone: string;
   socialLinks: { instagram: string; facebook: string; whatsapp: string };
 }) {
   try {

@@ -36,6 +36,7 @@ export default async function CheckoutPage({
     dni: '',
     phone: '',
   };
+  let emailVerified = false;
 
   // El perfil de nuestra BD añade DNI y teléfono de compras anteriores.
   try {
@@ -52,10 +53,17 @@ export default async function CheckoutPage({
         profile.email = dbProfile.email || profile.email;
         profile.dni = dbProfile.dni || '';
         profile.phone = dbProfile.phone || '';
+        emailVerified = dbProfile.emailVerified === true;
       }
     }
   } catch {
     // Si la API no responde, se continúa con los datos de la sesión
+  }
+
+  // Navegar el catálogo no requiere datos de compra, pero pagar sí. La API
+  // repite esta regla para que nadie pueda saltarla llamando el endpoint.
+  if (!emailVerified) {
+    redirect(`/${locale}/auth/verificar?email=${encodeURIComponent(profile.email)}`);
   }
 
   return <CheckoutClient profile={profile} />;

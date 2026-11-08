@@ -248,11 +248,11 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
             className="w-full bg-[#F8F9FA] border border-gray-100 rounded-xl pl-11 pr-4 py-3 text-sm text-gray-900 focus:border-[#8B5A5A] focus:bg-white outline-none transition-all shadow-inner"
           />
         </div>
-        <div className="flex flex-wrap md:flex-nowrap gap-3 w-full md:w-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto">
           <select 
             value={roleFilter} 
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="flex-1 md:w-40 bg-white border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-700 focus:border-[#8B5A5A] outline-none cursor-pointer"
+            className="w-full min-w-0 md:w-52 bg-white border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-700 focus:border-[#8B5A5A] outline-none cursor-pointer"
           >
             <option value="ALL">Todos los Roles</option>
             <option value="SUPER_ADMIN">Super Administrador</option>
@@ -263,7 +263,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
           <select 
             value={statusFilter} 
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="flex-1 md:w-40 bg-white border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-700 focus:border-[#8B5A5A] outline-none cursor-pointer"
+            className="w-full min-w-0 md:w-52 bg-white border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-700 focus:border-[#8B5A5A] outline-none cursor-pointer"
           >
             <option value="ALL">Todos los Estados</option>
             <option value="ACTIVE">Activos</option>

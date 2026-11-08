@@ -15,14 +15,7 @@ export default function TerminosPage() {
           <p>
             Todos los precios mostrados en el catálogo están expresados en Soles (S/) e incluyen el Impuesto General a las Ventas (IGV) vigente en el territorio peruano. Nos reservamos el derecho a modificar los precios en cualquier momento sin previo aviso, sin embargo, los pedidos ya procesados respetarán el precio al momento de la compra.
           </p>
-          <p>
-            Aceptamos pagos mediante:
-          </p>
-          <ul>
-            <li>Yape / Plin</li>
-            <li>Tarjetas de Crédito/Débito</li>
-            <li>Transferencias Bancarias (BCP, BBVA, Interbank)</li>
-          </ul>
+          <p>Los medios de pago disponibles se muestran antes de confirmar cada pedido. Un pedido se procesa únicamente después de la validación o confirmación del pago, según el medio elegido.</p>
 
           <h2>3. Envíos y Entregas</h2>
           <p>
@@ -33,6 +26,9 @@ export default function TerminosPage() {
           <p>
             Conforme a nuestras políticas de satisfacción, cuentas con 7 días calendario tras recibir el pedido para solicitar un cambio de talla o devolución. La prenda debe estar sin uso, con etiquetas originales y en perfecto estado. Los costos de envío por cambios no atribuibles a fallas de fábrica serán asumidos por el cliente.
           </p>
+
+          <h2>5. Atención al cliente y Libro de Reclamaciones</h2>
+          <p>Si necesitas presentar una queja o reclamo, puedes registrar tu solicitud desde nuestro <a href="/es/legal/reclamaciones">Libro de Reclamaciones virtual</a>. Al enviarla recibirás una constancia con su código de registro.</p>
         </div>
       </div>
     </div>

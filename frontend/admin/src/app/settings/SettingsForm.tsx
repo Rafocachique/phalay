@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Store, Instagram, Facebook, MessageCircle } from 'lucide-react';
+import { Store, Instagram, Facebook, Mail, MapPin, MessageCircle, ReceiptText } from 'lucide-react';
 import { updateStoreSettings } from '@/app/actions/store';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
@@ -18,6 +18,11 @@ export default function SettingsForm() {
   const [settings, setSettings] = useState({
     storeName: 'PHALAY',
     storeDescription: '',
+    legalName: '',
+    businessRuc: '',
+    businessAddress: '',
+    contactEmail: '',
+    contactPhone: '',
     socialLinks: {
       instagram: '',
       facebook: '',
@@ -36,6 +41,11 @@ export default function SettingsForm() {
         setSettings({
           storeName: data.storeName || 'PHALAY',
           storeDescription: data.storeDescription || '',
+          legalName: data.legalName || '',
+          businessRuc: data.businessRuc || '',
+          businessAddress: data.businessAddress || '',
+          contactEmail: data.contactEmail || '',
+          contactPhone: data.contactPhone || '',
           socialLinks: {
             instagram: data.socialLinks?.instagram || '',
             facebook: data.socialLinks?.facebook || '',
@@ -57,6 +67,11 @@ export default function SettingsForm() {
       const result = await updateStoreSettings({
         storeName: settings.storeName,
         storeDescription: settings.storeDescription,
+        legalName: settings.legalName,
+        businessRuc: settings.businessRuc,
+        businessAddress: settings.businessAddress,
+        contactEmail: settings.contactEmail,
+        contactPhone: settings.contactPhone,
         socialLinks: settings.socialLinks,
       });
       if ('success' in result && result.success) {
@@ -112,9 +127,71 @@ export default function SettingsForm() {
                   className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 resize-none"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-900 mb-2">Razón social o nombre legal</label>
+                <input
+                  type="text"
+                  value={settings.legalName}
+                  onChange={e => setSettings({...settings, legalName: e.target.value})}
+                  placeholder="Ej. CACHIQUE ESPINOZA RAFAEL"
+                  className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">RUC</label>
+                  <input
+                    type="text" inputMode="numeric" maxLength={11}
+                    value={settings.businessRuc}
+                    onChange={e => setSettings({...settings, businessRuc: e.target.value.replace(/\D/g, '').slice(0, 11)})}
+                    placeholder="20123456789"
+                    className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">Teléfono de contacto</label>
+                  <input
+                    type="tel" inputMode="numeric" maxLength={9}
+                    value={settings.contactPhone}
+                    onChange={e => setSettings({...settings, contactPhone: normalizeWhatsAppNumber(e.target.value)})}
+                    placeholder="999 888 777"
+                    className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 font-medium"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  <Mail size={16} className="text-[#8B5A5A]" />
+                  Correo de atención
+                </label>
+                <input
+                  type="email"
+                  value={settings.contactEmail}
+                  onChange={e => setSettings({...settings, contactEmail: e.target.value})}
+                  placeholder="contacto@tumarca.pe"
+                  className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  <MapPin size={16} className="text-[#8B5A5A]" />
+                  Domicilio comercial
+                </label>
+                <textarea
+                  rows={2}
+                  value={settings.businessAddress}
+                  onChange={e => setSettings({...settings, businessAddress: e.target.value})}
+                  placeholder="Dirección completa para atención de reclamos"
+                  className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 resize-none"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
                   <Instagram size={16} className="text-pink-600" />
@@ -161,6 +238,11 @@ export default function SettingsForm() {
                 <p className="mt-1.5 text-xs text-gray-500">Ingresa sólo los 9 dígitos. Crearemos el enlace de WhatsApp automáticamente.</p>
               </div>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#EBD9D7] bg-[#FFF9F8] p-4 text-sm text-gray-600 flex gap-3">
+            <ReceiptText className="mt-0.5 shrink-0 text-[#8B5A5A]" size={20} />
+            <p><strong className="text-gray-900">Requisito para pagos online:</strong> completa razón social, RUC, correo y domicilio. Se publican en las páginas legales y en el Libro de Reclamaciones.</p>
           </div>
 
           <div className="pt-4 border-t border-gray-100 flex justify-end">

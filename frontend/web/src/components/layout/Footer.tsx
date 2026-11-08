@@ -13,9 +13,16 @@ interface FooterProps {
     facebook?: string;
     whatsapp?: string;
   };
+  initialLegalInfo?: {
+    legalName?: string;
+    businessRuc?: string;
+    businessAddress?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+  };
 }
 
-export function Footer({ initialStoreName, initialDescription, initialSocialLinks }: FooterProps = {}) {
+export function Footer({ initialStoreName, initialDescription, initialSocialLinks, initialLegalInfo }: FooterProps = {}) {
   const params = useParams();
   const locale = params?.locale || 'es';
   
@@ -45,12 +52,12 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
           <div>
             <h2 className="text-5xl font-black tracking-[0.2em] text-[#8B5A5A] mb-6 font-serif uppercase">{settings.storeName}</h2>
             <p className="text-base text-gray-600 font-medium mb-6 leading-relaxed">{settings.storeDescription}</p>
-            <div className="flex gap-4 text-gray-500">
+            <div className="flex gap-4">
               {settings.socialLinks.instagram && (
-                <a href={settings.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-[#8B5A5A] transition-colors"><Instagram size={20} /></a>
+                <a href={settings.socialLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label="Síguenos en Instagram" title="Instagram" className="text-[#E4405F] transition-colors hover:text-[#C13584]"><Instagram size={20} /></a>
               )}
               {settings.socialLinks.facebook && (
-                <a href={settings.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-[#8B5A5A] transition-colors"><Facebook size={20} /></a>
+                <a href={settings.socialLinks.facebook} target="_blank" rel="noopener noreferrer" aria-label="Síguenos en Facebook" title="Facebook" className="text-[#1877F2] transition-colors hover:text-[#166FE5]"><Facebook size={20} /></a>
               )}
               {whatsappHref && (
                 <a href={whatsappHref} target="_blank" rel="noopener noreferrer" aria-label="Escríbenos por WhatsApp" title="Escríbenos por WhatsApp" className="inline-flex h-5 w-5 items-center justify-center text-[#25D366] transition-colors hover:text-[#1FB957]">
@@ -77,6 +84,7 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
               <li><Link href={`/${locale}/mis-pedidos`} className="hover:text-[#8B5A5A] transition-colors">Mis Pedidos</Link></li>
               <li><Link href={`/${locale}/legal/terminos`} className="hover:text-[#8B5A5A] transition-colors">Envíos y Devoluciones</Link></li>
               <li><Link href={`/${locale}/soporte/faq`} className="hover:text-[#8B5A5A] transition-colors">Preguntas Frecuentes</Link></li>
+              <li><Link href={`/${locale}/legal/reclamaciones`} className="hover:text-[#8B5A5A] transition-colors">Libro de Reclamaciones</Link></li>
             </ul>
           </div>
 
@@ -99,6 +107,13 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
             <Link href={`/${locale}/legal/terminos`} className="hover:text-[#8B5A5A] transition-colors">Términos y Condiciones</Link>
           </div>
         </div>
+        {(initialLegalInfo?.legalName || initialLegalInfo?.businessRuc || initialLegalInfo?.contactEmail) && (
+          <p className="mt-5 text-center text-xs leading-5 text-gray-500">
+            {initialLegalInfo.legalName && <span>{initialLegalInfo.legalName}</span>}
+            {initialLegalInfo.businessRuc && <span>{initialLegalInfo.legalName ? ' · ' : ''}RUC {initialLegalInfo.businessRuc}</span>}
+            {initialLegalInfo.contactEmail && <span>{(initialLegalInfo.legalName || initialLegalInfo.businessRuc) ? ' · ' : ''}{initialLegalInfo.contactEmail}</span>}
+          </p>
+        )}
       </div>
     </footer>
   );

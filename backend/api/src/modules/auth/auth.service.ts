@@ -7,6 +7,11 @@ import { sendVerificationCodeEmail } from './verification-email';
 
 const CODE_TTL_MS = 15 * 60 * 1000;
 const MAX_VERIFICATION_ATTEMPTS = 5;
+// Reduce la segunda validación consecutiva que ocurre al redirigir después
+// del login. Nunca se guarda el token: sólo su hash, en memoria y por muy
+// poco tiempo. Una suspensión tarda como máximo 10 s en reflejarse.
+const TOKEN_CACHE_TTL_MS = 10 * 1000;
+const TOKEN_CACHE_MAX_ENTRIES = 500;
 
 function hashCode(code: string): string {
   return createHash('sha256').update(code).digest('hex');
@@ -16,6 +21,7 @@ function hashCode(code: string): string {
 export class AuthService implements OnModuleInit {
   private readonly logger = new Logger(AuthService.name);
   private readonly supabase: SupabaseClient;
+  private readonly verifiedTokenCache = new Map<string, { user: any; expiresAt: number }>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -28,6 +34,13 @@ export class AuthService implements OnModuleInit {
   }
 
   async onModuleInit() {
+    // En producción las cuentas del equipo se administran desde el panel y
+    // Supabase. Nunca se debe crear ni sincronizar una cuenta privilegiada a
+    // partir de una contraseña sembrada en variables de entorno.
+    if (this.config.get<string>('NODE_ENV') === 'production') {
+      this.logger.log('Producción: creación de administrador semilla desactivada.');
+      return;
+    }
     const adminEmail = this.config.get<string>('SEED_ADMIN_EMAIL');
     const adminPassword = this.config.get<string>('SEED_ADMIN_PASSWORD');
 
@@ -107,6 +120,13 @@ export class AuthService implements OnModuleInit {
    */
   async verifyToken(token: string) {
     try {
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const cached = this.verifiedTokenCache.get(tokenHash);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.user;
+      }
+      if (cached) this.verifiedTokenCache.delete(tokenHash);
+
       const anonClient = createClient(
         this.config.getOrThrow('NEXT_PUBLIC_SUPABASE_URL'),
         this.config.getOrThrow('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
@@ -122,6 +142,18 @@ export class AuthService implements OnModuleInit {
       const user = await this.prisma.user.findUnique({
         where: { supabaseAuthId: data.user.id },
       });
+
+      if (user) {
+        // Evita crecimiento ilimitado en instancias cálidas de Vercel.
+        if (this.verifiedTokenCache.size >= TOKEN_CACHE_MAX_ENTRIES) {
+          const oldest = this.verifiedTokenCache.keys().next().value;
+          if (oldest) this.verifiedTokenCache.delete(oldest);
+        }
+        this.verifiedTokenCache.set(tokenHash, {
+          user,
+          expiresAt: Date.now() + TOKEN_CACHE_TTL_MS,
+        });
+      }
 
       return user;
     } catch (e: any) {

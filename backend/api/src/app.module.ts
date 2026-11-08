@@ -17,6 +17,7 @@ import { CollectionsModule } from './modules/collections/collections.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
+import { ClaimsModule } from './modules/claims/claims.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { ShippingModule } from './modules/shipping/shipping.module';
     OrdersModule,
     CategoriesModule,
     ShippingModule,
+    ClaimsModule,
   ],
   providers: [
     {

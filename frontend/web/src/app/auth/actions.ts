@@ -29,7 +29,7 @@ export async function login(_prevState: any, formData: FormData) {
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -50,31 +50,10 @@ export async function login(_prevState: any, formData: FormData) {
     return { error: msg };
   }
 
-  // Cuentas creadas pero nunca verificadas no deben poder navegar la tienda:
-  // las mandamos a terminar la verificación en vez de dejarlas pasar.
-  // OJO: redirect() lanza una excepción especial de Next.js — nunca debe
-  // llamarse dentro de un try/catch o ese catch se la comería.
-  let needsVerification = false;
-  try {
-    const meRes = data.session?.access_token
-      ? await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${data.session.access_token}` },
-          cache: 'no-store',
-        })
-      : null;
-    if (meRes?.ok) {
-      const { data: profile } = await meRes.json();
-      needsVerification = profile?.emailVerified === false;
-    }
-  } catch (err) {
-    console.warn('No se pudo verificar el estado de la cuenta:', err);
-  }
-
-  if (needsVerification) {
-    await supabase.auth.signOut();
-    redirect(`/es/auth/verificar?email=${encodeURIComponent(email)}`);
-  }
-
+  // El login sólo autentica contra Supabase: no añadimos otra ida a la API,
+  // que penalizaba la primera carga cuando la función estaba fría. La API
+  // sigue exigiendo correo verificado antes de crear una orden o pago y el
+  // checkout guía a la clienta a verificarlo.
   // Volvemos a donde la clienta quería ir (p. ej. el checkout) o al catálogo.
   // La ruta lleva locale porque next-intl lo exige en todas las URLs.
   redirect(safeRedirectPath(redirectTo, '/es/catalogo'));
@@ -242,5 +221,6 @@ export async function resendVerificationCode(email: string): Promise<{ error?: s
 export async function signout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect('/es/auth/login');
+  // Tras cerrar sesión se vuelve a la portada de la marca, no al formulario.
+  redirect('/es');
 }

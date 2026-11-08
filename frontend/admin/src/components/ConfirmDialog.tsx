@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, LoaderCircle } from 'lucide-react';
 
 type ConfirmDialogProps = {
@@ -22,9 +24,13 @@ export function ConfirmDialog({
   onCancel,
   onConfirm,
 }: ConfirmDialogProps) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!open || !mounted) return null;
 
-  return (
+  // El portal evita que un contenedor con transform/overflow recorte el fondo
+  // y garantiza que el diálogo se centre respecto de toda la ventana.
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
       <div className="w-full max-w-lg rounded-3xl border border-[#E8C5C4] bg-white p-6 shadow-2xl sm:p-7">
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FBEFEF] text-[#A34D4D]">
@@ -42,6 +48,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

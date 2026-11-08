@@ -84,6 +84,11 @@ export default function CatalogoList({ initialCatalogos }: { initialCatalogos: a
                   <div>
                     <p className="font-bold text-gray-900">{cat.name}</p>
                     <p className="text-sm text-gray-500 truncate max-w-xs">{cat.slug}</p>
+                    <p className={`mt-1 text-xs font-medium ${cat.productCount > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                      {cat.productCount > 0
+                        ? `${cat.productCount} prenda${cat.productCount === 1 ? '' : 's'} asociada${cat.productCount === 1 ? '' : 's'}: ${cat.associatedProducts?.map((product: any) => product.name).join(', ')}`
+                        : 'Sin prendas asociadas'}
+                    </p>
                   </div>
                 </div>
               </td>
@@ -95,7 +100,10 @@ export default function CatalogoList({ initialCatalogos }: { initialCatalogos: a
                   id={cat.id}
                   type="catalog"
                   entityName={`el tipo de prenda "${cat.name}"`} 
-                  className="text-red-500 hover:text-red-700 font-bold text-sm transition-colors" 
+                  disabled={cat.productCount > 0}
+                  title={cat.productCount > 0 ? 'No se puede eliminar mientras tenga prendas asociadas' : 'Eliminar tipo de prenda'}
+                  className={`font-bold text-sm transition-colors ${cat.productCount > 0 ? 'cursor-not-allowed text-gray-300' : 'text-red-500 hover:text-red-700'}`}
+                  onDeleted={(id) => setCatalogos((current) => current.filter((item) => item.id !== id))}
                 />
               </td>
             </tr>

@@ -60,7 +60,8 @@ export async function deleteCatalogo(id: string) {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return { error: err.message || 'Error al eliminar el catálogo' };
+      const message = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+      return { error: message || 'No se pudo eliminar el tipo de prenda' };
     }
     revalidatePath('/catalogo');
     return { success: true };

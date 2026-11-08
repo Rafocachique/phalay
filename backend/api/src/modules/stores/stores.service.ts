@@ -26,6 +26,14 @@ export class StoresService {
     const settings = await this.getOrCreateSettings();
     const socialLinks: any = typeof settings.socialLinks === 'object' && settings.socialLinks !== null ? settings.socialLinks : {};
 
+    const manualPayment = settings.paymentManualEnabled
+      ? {
+          yapeQrUrl: settings.yapeQrUrl,
+          whatsappNumber: settings.whatsappNumber,
+          manualPaymentInfo: settings.manualPaymentInfo,
+        }
+      : {};
+
     return {
       id: settings.id,
       storeName: settings.storeName,
@@ -34,15 +42,18 @@ export class StoresService {
       bannerUrl: settings.bannerUrl,
       contactEmail: settings.contactEmail,
       contactPhone: settings.contactPhone,
+      legalName: settings.legalName,
+      businessRuc: settings.businessRuc,
+      businessAddress: settings.businessAddress,
       socialLinks,
       branding: socialLinks.branding || {},
       // Métodos de pago disponibles y lo que la clienta necesita para pagar
       paymentCardEnabled: settings.paymentCardEnabled,
       paymentYapeEnabled: settings.paymentYapeEnabled,
       paymentManualEnabled: settings.paymentManualEnabled,
-      yapeQrUrl: settings.yapeQrUrl,
-      whatsappNumber: settings.whatsappNumber,
-      manualPaymentInfo: settings.manualPaymentInfo,
+      // El QR y teléfono sólo son necesarios mientras el pago manual está
+      // habilitado. Ocultarlos cuando está apagado reduce exposición inútil.
+      ...manualPayment,
     };
   }
 
@@ -77,6 +88,11 @@ export class StoresService {
       data: {
         storeName: data.storeName !== undefined ? data.storeName : undefined,
         storeDescription: data.storeDescription !== undefined ? data.storeDescription : undefined,
+        contactEmail: data.contactEmail !== undefined ? data.contactEmail : undefined,
+        contactPhone: data.contactPhone !== undefined ? data.contactPhone : undefined,
+        legalName: data.legalName !== undefined ? data.legalName : undefined,
+        businessRuc: data.businessRuc !== undefined ? data.businessRuc : undefined,
+        businessAddress: data.businessAddress !== undefined ? data.businessAddress : undefined,
         bannerUrl: data.bannerUrl !== undefined ? data.bannerUrl : undefined,
         socialLinks: currentSocialLinks,
         // Configuración de métodos de pago del checkout

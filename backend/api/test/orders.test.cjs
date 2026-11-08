@@ -10,6 +10,7 @@ const body = { email: 'cliente@example.com', name: 'Cliente Uno', dni: '12345678
   phone: '999999999', address: 'Calle Uno', paymentMethod: 'transferencia',
   missingDestinationName: 'Lima', checkoutIdempotencyKey: '22222222-2222-4222-8222-222222222222',
   items: [{ productId, variantId: 'variant', quantity: 1 }] };
+const authenticatedCustomer = { id: 'user', email: body.email };
 
 function fixture() {
   let stock = 1, result, storedOrder, paymentsCreated = 0;
@@ -32,7 +33,7 @@ function fixture() {
   };
   const db = {
     systemSettings: { findFirst: async () => ({ paymentManualEnabled: true }) },
-    user: { findUnique: async () => ({ id: 'user', firstName: 'Cliente', lastName: 'Uno', dni: body.dni, phone: body.phone }) },
+    user: { findUnique: async () => ({ id: 'user', firstName: 'Cliente', lastName: 'Uno', dni: body.dni, phone: body.phone, emailVerified: true }) },
     shippingAddress: { create: async () => ({ id: 'address' }) },
     $transaction: async (fn) => fn(tx),
     order: {
@@ -48,19 +49,19 @@ test('rechaza cantidades inválidas antes de crear usuarios o direcciones', asyn
   for (const quantity of [-1, 0, 1.5, '2', NaN, Infinity]) {
     const { service, db } = fixture();
     db.user.findUnique = () => { throw new Error('No debe escribir ni buscar al cliente'); };
-    await assert.rejects(service.create({ ...body, items: [{ ...body.items[0], quantity }] }), /entero positivo/);
+    await assert.rejects(service.create({ ...body, items: [{ ...body.items[0], quantity }] }, authenticatedCustomer), /entero positivo/);
   }
 });
 
 test('rechaza carritos vacíos', async () => {
-  await assert.rejects(fixture().service.create({ ...body, items: [] }), /carrito/);
+  await assert.rejects(fixture().service.create({ ...body, items: [] }, authenticatedCustomer), /carrito/);
 });
 
 test('dos compras de la última unidad: solo una puede reservar stock', async () => {
   const f = fixture();
   const outcomes = await Promise.allSettled([
-    f.service.create(body),
-    f.service.create({ ...body, checkoutIdempotencyKey: '33333333-3333-4333-8333-333333333333' }),
+    f.service.create(body, authenticatedCustomer),
+    f.service.create({ ...body, checkoutIdempotencyKey: '33333333-3333-4333-8333-333333333333' }, authenticatedCustomer),
   ]);
   assert.equal(outcomes.filter(x => x.status === 'fulfilled').length, 1);
   assert.equal(f.stock(), 0);
@@ -68,16 +69,23 @@ test('dos compras de la última unidad: solo una puede reservar stock', async ()
 
 test('un reintento con la misma llave devuelve el pedido existente sin duplicar pago', async () => {
   const f = fixture();
-  const first = await f.service.create(body);
-  const second = await f.service.create(body);
+  const first = await f.service.create(body, authenticatedCustomer);
+  const second = await f.service.create(body, authenticatedCustomer);
   assert.equal(first.order.id, second.order.id);
   assert.equal(f.paymentsCreated(), 1);
 });
 
 test('checkout no devuelve relaciones ni datos internos del cliente', async () => {
-  const response = await fixture().service.create(body);
+  const response = await fixture().service.create(body, authenticatedCustomer);
   assert.deepEqual(Object.keys(response.order).sort(), ['id','items','orderNumber','paymentStatus','status','total'].sort());
   assert.deepEqual(response.paymentDetails, { payment: { id: 'payment-1' } });
+});
+
+test('checkout rechaza un pedido cuyo correo no pertenece a la sesión', async () => {
+  await assert.rejects(
+    fixture().service.create({ ...body, email: 'otra-persona@example.com' }, authenticatedCustomer),
+    /debe coincidir con tu sesión/,
+  );
 });
 
 test('cotización rechaza productos retirados y cantidades negativas', async () => {
@@ -86,6 +94,19 @@ test('cotización rechaza productos retirados y cantidades negativas', async () 
   await assert.rejects(f.service.calculateTotals([{ ...body.items[0], quantity: -1 }]), /entero positivo/);
   f.db.product.findUnique = async () => ({ ...product, status: 'DRAFT' });
   await assert.rejects(f.service.calculateTotals(body.items), /disponible/);
+});
+
+test('la cotización ignora cualquier precio o total manipulado por el navegador', async () => {
+  const f = fixture();
+  f.db.product = { findUnique: async () => product };
+  const totals = await f.service.calculateTotals([{
+    ...body.items[0],
+    price: 0.01,
+    unitPrice: 0.01,
+    total: 0.01,
+    subtotal: 0.01,
+  }]);
+  assert.deepEqual(totals, { subtotal: 20, shippingCost: 0, total: 20 });
 });
 
 test('webhook repetido confirma una sola vez y verifica importe y moneda', async () => {

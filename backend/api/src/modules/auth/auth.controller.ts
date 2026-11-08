@@ -91,7 +91,16 @@ export class AuthController {
     const user = await this.authService.verifyToken(body.token);
     return {
       success: !!user,
-      data: user,
+      // Nunca exponer el registro Prisma completo: contiene referencias
+      // internas y campos de verificación que no necesita el navegador.
+      data: user ? {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        status: user.status,
+      } : null,
       timestamp: new Date().toISOString(),
     };
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
@@ -9,7 +10,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 // La subida ocurre en el servidor y tras verificar la sesión de admin, así que
 // se usa la service role key: la anon key no puede escribir en Storage por RLS
 // y eso hacía que todo cayera al respaldo base64 (imágenes enteras en la BD).
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
@@ -69,7 +70,8 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const safeExtension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'image';
+    const filename = `${randomUUID()}.${safeExtension}`;
 
     // 1. Intentar subir a Supabase Storage si está configurado y el bucket existe
     if (supabaseUrl && supabaseKey && !supabaseUrl.includes('your-project')) {
@@ -96,8 +98,18 @@ export async function POST(req: Request) {
           return NextResponse.json({ url: urlData.publicUrl });
         }
       } catch (err) {
-        console.error('Error al subir a Supabase Storage, usando fallback local:', err);
+        console.error('Error al subir a Supabase Storage:', err);
       }
+    }
+
+    // Vercel no ofrece disco persistente. Nunca guardamos un archivo temporal
+    // ni una data URL dentro de la base de datos en producción: se podría
+    // perder, saturar registros y filtrar contenido fuera de Storage.
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'No se pudo guardar la imagen de forma segura. Revisa la configuración de Supabase Storage.' },
+        { status: 503 },
+      );
     }
 
     // 2. Fallback: Guardar localmente en el directorio public/uploads

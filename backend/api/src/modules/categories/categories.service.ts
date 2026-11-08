@@ -25,12 +25,24 @@ export class CategoriesService {
   }
 
   async findAll() {
-    return this.prisma.productCategory.findMany({
+    const categories = await this.prisma.productCategory.findMany({
       orderBy: [
         { position: 'asc' },
         { createdAt: 'desc' }
-      ]
+      ],
+      include: {
+        products: {
+          where: { deletedAt: null },
+          select: { id: true, name: true, sku: true },
+          orderBy: { name: 'asc' },
+        },
+      },
     });
+    return categories.map(({ products, ...category }) => ({
+      ...category,
+      productCount: products.length,
+      associatedProducts: products,
+    }));
   }
 
   async reorder(ids: string[]) {
@@ -75,6 +87,26 @@ export class CategoriesService {
   }
 
   async remove(id: string) {
+    // Comprobamos la relación antes de borrar. Así el panel recibe un error
+    // útil en lugar de depender de cómo Prisma traduzca una llave foránea.
+    const category = await this.prisma.productCategory.findUnique({
+      where: { id },
+      include: {
+        products: {
+          where: { deletedAt: null },
+          select: { name: true, sku: true },
+          orderBy: { name: 'asc' },
+        },
+      },
+    });
+    if (!category) throw new NotFoundException('Tipo de prenda no encontrado');
+    if (category.products.length > 0) {
+      const names = category.products.map((product) => product.name).join(', ');
+      throw new BadRequestException(
+        `No se puede eliminar: tiene ${category.products.length} prenda(s) asociada(s): ${names}.`,
+      );
+    }
+
     try {
       return await this.prisma.productCategory.delete({
         where: { id },

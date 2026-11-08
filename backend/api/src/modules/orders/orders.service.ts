@@ -138,7 +138,7 @@ export class OrdersService {
     return { subtotal, shippingCost, total: subtotal + shippingCost };
   }
 
-  async create(data: any) {
+  async create(data: any, authenticatedUser: { id: string; email: string }) {
     const {
       email,
       name,
@@ -233,38 +233,25 @@ export class OrdersService {
       throw new BadRequestException('El pago no corresponde al correo del pedido.');
     }
 
-    // 1. Encontrar o crear usuario (Cliente) por email
-    let user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      const nameParts = name.trim().split(/\s+/);
-      const firstName = nameParts[0] || 'Cliente';
-      const lastName = nameParts.slice(1).join(' ') || 'Phalay';
+    // El checkout ya exige sesión. Volvemos a comprobarlo en la API para que
+    // nadie pueda fabricar pedidos para otro correo ni agotar stock mediante
+    // llamadas directas a este endpoint.
+    if (String(email).trim().toLowerCase() !== authenticatedUser.email.toLowerCase()) {
+      throw new BadRequestException('El correo del pedido debe coincidir con tu sesión.');
+    }
+    let user = await this.prisma.user.findUnique({ where: { id: authenticatedUser.id } });
+    if (!user) throw new BadRequestException('No encontramos tu cuenta. Vuelve a iniciar sesión.');
+    if (!user.emailVerified) {
+      throw new BadRequestException('Verifica tu correo antes de realizar una compra.');
+    }
 
-      user = await this.prisma.user.create({
-        data: {
-          email,
-          firstName,
-          lastName,
-          phone,
-          dni: normalizedDni,
-          // supabaseAuthId es único: cada invitado necesita su propio UUID.
-          // Antes se usaba un placeholder fijo, así que sólo podía existir un
-          // cliente invitado en toda la tienda y el segundo fallaba.
-          supabaseAuthId: randomUUID(),
-          role: 'CUSTOMER',
-          status: 'ACTIVE',
-        },
-      });
-    } else {
-      // La cuenta ya existía: completamos los datos que aún no tenga para no
-      // volver a pedírselos y para que el equipo pueda contactarla.
-      const missing: { dni?: string; phone?: string } = {};
-      if (normalizedDni && !user.dni) missing.dni = normalizedDni;
-      if (phone && !user.phone) missing.phone = phone;
-
-      if (Object.keys(missing).length > 0) {
-        user = await this.prisma.user.update({ where: { id: user.id }, data: missing });
-      }
+    // Completamos datos de contacto sin aceptar nunca un id de cliente desde
+    // el navegador. El rol y la cuenta siguen siendo los de la sesión.
+    const missing: { dni?: string; phone?: string } = {};
+    if (normalizedDni && !user.dni) missing.dni = normalizedDni;
+    if (phone && !user.phone) missing.phone = phone;
+    if (Object.keys(missing).length > 0) {
+      user = await this.prisma.user.update({ where: { id: user.id }, data: missing });
     }
 
     // 2. Resolver el destino elegido (el checkout no manda city/region sueltos,

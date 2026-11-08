@@ -11,6 +11,7 @@ import Script from 'next/script';
 import Link from 'next/link';
 import { ArrowRight, MapPin, Package, User, IdCard } from 'lucide-react';
 import { useCartStore } from '@/store/useCartStore';
+import { createClient } from '@/lib/supabase/client';
 
 function buildTimeline(region: string) {
   const isLima = region.toLowerCase().includes('lima') || region === 'Cotizando...';
@@ -106,6 +107,12 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
       checkoutAttemptRef.current = crypto.randomUUID();
     }
     return checkoutAttemptRef.current;
+  };
+
+  const getAuthenticatedHeaders = async () => {
+    const { data: { session } } = await createClient().auth.getSession();
+    if (!session?.access_token) throw new Error('Tu sesión venció. Vuelve a iniciar sesión para continuar.');
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` };
   };
 
   useEffect(() => {
@@ -272,7 +279,7 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
 
       const res = await fetch(`${apiBaseUrl}/orders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthenticatedHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -349,7 +356,7 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
         // Yape requiere una Orden de Culqi (sujeta al monto mínimo de S/ 6.00).
         const res = await fetch(`${apiBaseUrl}/payments/culqi-order`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await getAuthenticatedHeaders(),
           body: JSON.stringify({
             ...cartPayload,
             email: form.email,

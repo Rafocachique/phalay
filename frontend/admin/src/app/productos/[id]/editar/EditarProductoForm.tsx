@@ -438,21 +438,20 @@ export default function EditarProductoForm({
                         : 'Aún no hay colecciones. Créalas en la sección Colecciones.'}
                     </p>
                   ) : (
-                    <select
-                      value={selectedCollectionIds[0] || ''}
-                      onChange={e => {
-                        const val = e.target.value;
-                        setSelectedCollectionIds(val ? [val] : []);
-                      }}
-                      className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 font-bold transition-colors cursor-pointer text-sm"
-                    >
-                      <option value="">Ninguna colección</option>
-                      {collectionsList.map((col) => (
-                        <option key={col.id} value={col.id}>
-                          {col.name}
-                        </option>
-                      ))}
-                    </select>
+                    <>
+                    <div className="grid grid-cols-1 gap-2 rounded-xl border border-gray-100 bg-[#F8F9FA] p-3">
+                      {collectionsList.map((col) => {
+                        const selected = selectedCollectionIds.includes(col.id);
+                        return (
+                          <label key={col.id} className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${selected ? 'bg-white text-[#8B5A5A] shadow-sm' : 'text-gray-600 hover:bg-white/70'}`}>
+                            <input type="checkbox" checked={selected} onChange={() => setSelectedCollectionIds((current) => selected ? current.filter((id) => id !== col.id) : [...current, col.id])} className="h-4 w-4 rounded border-gray-300 text-[#8B5A5A] focus:ring-[#8B5A5A]" />
+                            {col.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500">Puedes asociar esta prenda a una o varias colecciones.</p>
+                    </>
                   )}
                 </div>
               </div>

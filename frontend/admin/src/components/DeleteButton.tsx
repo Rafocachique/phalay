@@ -14,9 +14,10 @@ interface DeleteButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonEl
   id: string;
   type: 'catalog' | 'product' | 'collection' | 'order';
   entityName?: string;
+  onDeleted?: (id: string) => void;
 }
 
-export function DeleteButton({ id, type, entityName = 'este elemento', className, children, ...props }: DeleteButtonProps) {
+export function DeleteButton({ id, type, entityName = 'este elemento', className, children, onDeleted, ...props }: DeleteButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
@@ -38,6 +39,8 @@ export function DeleteButton({ id, type, entityName = 'este elemento', className
       if (res && res.error) {
         toast.error(res.error || 'Ocurrió un error al eliminar');
       } else {
+        // Actualiza la lista local al instante; refresh sólo sincroniza datos.
+        onDeleted?.(id);
         toast.success('Eliminado correctamente');
         router.refresh();
       }

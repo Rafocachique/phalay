@@ -23,7 +23,7 @@ async function getDashboardData() {
     const products = productsRes.ok ? await productsRes.json() : [];
 
     return {
-      totalUsers: statsData.data?.totalUsers || 0,
+      totalUsers: statsData.data?.totalCustomers || 0,
       newUsersThisMonth: statsData.data?.newThisMonth || 0,
       newUsersPrevMonth: statsData.data?.newPrevMonth || 0,
       orders: orders || [],

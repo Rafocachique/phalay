@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Req, Query, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Req, Query, BadRequestException, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { timingSafeEqual } from 'crypto';
@@ -6,6 +6,9 @@ import { Request } from 'express';
 import { CulqiService, getCulqiMinimum } from '../orders/culqi.service';
 import { OrdersService } from '../orders/orders.service';
 import { PrismaService } from '../../database/prisma.service';
+import { JwtGuard } from '../auth/jwt.guard';
+import { GetUser } from '../auth/get-user.decorator';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -24,6 +27,8 @@ export class PaymentsController {
    * popup de Culqi muestre exactamente lo que después se cobrará.
    */
   @Post('culqi-order')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Genera una orden en Culqi (para pagos con Yape)' })
   async createCulqiOrder(
     @Body() dto: {
@@ -33,9 +38,16 @@ export class PaymentsController {
       name: string;
       phone: string;
     },
+    @GetUser() user: { email: string; emailVerified: boolean },
   ) {
     if (!dto.email) {
       throw new BadRequestException('El correo es obligatorio para generar la orden de pago.');
+    }
+    if (dto.email.trim().toLowerCase() !== user.email.toLowerCase()) {
+      throw new UnauthorizedException('El correo del pago debe coincidir con tu sesión.');
+    }
+    if (!user.emailVerified) {
+      throw new UnauthorizedException('Verifica tu correo antes de iniciar un pago.');
     }
 
     const { total } = await this.ordersService.calculateTotals(dto.items, dto.shippingDestinationId);

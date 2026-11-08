@@ -1,5 +1,4 @@
 'use server';
-
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -87,37 +86,13 @@ export async function adminLogin(_prevState: any, formData: FormData) {
 
     const verifyData = await verifyRes.json();
 
-    // Si el usuario no existe en la BD pero sí en Supabase, auto-sincronizamos
+    // Una cuenta de Supabase por sí sola nunca concede acceso al panel. Antes
+    // se intentaba crearla automáticamente con un rol enviado desde el
+    // navegador; aunque el API la degradaba a CUSTOMER, era confuso y abría
+    // una vía innecesaria de alta desde la pantalla de administración.
     if (!verifyData.success || !verifyData.data) {
-      const supabaseUser = session.user;
-      const meta = supabaseUser.user_metadata || {};
-
-      // Intentar auto-registrar usando los datos del perfil de Supabase
-      const syncRes = await fetch(`${apiUrl}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          supabaseAuthId: supabaseUser.id,
-          email: supabaseUser.email,
-          firstName: meta.first_name || meta.full_name?.split(' ')[0] || supabaseUser.email?.split('@')[0] || 'Admin',
-          lastName: meta.last_name || meta.full_name?.split(' ').slice(1).join(' ') || 'Phalay',
-          role: 'ADMIN',
-        }),
-      });
-
-      if (!syncRes.ok) {
-        await supabase.auth.signOut();
-        return { error: 'Tu cuenta de Supabase no está vinculada al sistema. Contacta al soporte.' };
-      }
-
-      // Re-verificar después de la sincronización
-      const syncData = await syncRes.json();
-      if (!syncData.success || !syncData.data) {
-        await supabase.auth.signOut();
-        return { error: 'Error al sincronizar tu cuenta con el sistema.' };
-      }
-
-      // Permitir acceso al usuario recién sincronizado (rol ADMIN por defecto)
+      await supabase.auth.signOut();
+      return { error: 'Tu cuenta no está autorizada para el panel. Un superadministrador debe crearla desde Gestión de Usuarios.' };
     } else {
       const user = verifyData.data;
       if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
@@ -164,83 +139,4 @@ export async function adminLogout() {
   // router del cliente a veces se queda en la misma pantalla y parece que el
   // botón no hizo nada (aunque la sesión sí se cerró). La navegación la hace
   // el botón con window.location, que además limpia la caché del router.
-}
-
-export async function adminRegister(_prevState: any, formData: FormData) {
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
-  const firstName = formData.get('firstName') as string;
-  const lastName = formData.get('lastName') as string;
-
-  if (!email || !password || !firstName || !lastName) {
-    return { error: 'Por favor, completa todos los campos.' };
-  }
-
-  try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: any[]) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, { ...options, httpOnly: true, secure: process.env.NODE_ENV === 'production' }),
-            );
-          },
-        },
-      },
-    );
-
-    // Registrar en Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          role: 'ADMIN',
-        },
-      },
-    });
-
-    if (authError || !authData.user) {
-      return { error: translateAuthError(authError?.message || 'Error al registrar el administrador en Supabase.') };
-    }
-
-    // Registrar en NestJS API
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-    const registerRes = await fetch(`${apiUrl}/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        supabaseAuthId: authData.user.id,
-        email,
-        firstName,
-        lastName,
-        role: 'ADMIN',
-      }),
-    });
-
-    if (!registerRes.ok) {
-      const err = await registerRes.json().catch(() => ({}));
-      return { error: err.message || 'Error al guardar el usuario en el servidor.' };
-    }
-
-    // Iniciar sesión automáticamente
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) {
-      return { error: 'Registro exitoso, pero ocurrió un error al iniciar sesión automáticamente.' };
-    }
-  } catch (err: any) {
-    return { error: 'Error de conexión con el servidor.' };
-  }
-
-  redirect('/');
 }

@@ -11,14 +11,13 @@ import { GetUser } from '../auth/get-user.decorator';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  /**
-   * Crear una nueva orden
-   * Puede ser anónima (checkout guest) o autenticada
-   */
+  /** Crear una orden sólo para la sesión que la está realizando. */
   @Post()
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear nueva orden' })
-  async create(@Body() createDto: any) {
-    return this.ordersService.create(createDto);
+  async create(@Body() createDto: any, @GetUser() user: any) {
+    return this.ordersService.create(createDto, user);
   }
 
   /**

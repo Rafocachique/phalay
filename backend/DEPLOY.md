@@ -14,7 +14,16 @@ La tienda y el panel conservan sus propios proyectos. Render no es necesario.
    Supabase para `DATABASE_URL` y la conexión directa para `DIRECT_URL`.
    `CORS_ALLOWED_ORIGINS` debe contener las URLs exactas de tienda y panel,
    separadas por coma. No configurar credenciales SEED_ADMIN en producción.
-5. Antes de desplegar, aplicar `database/payment-gateway-unique.sql` en la BD.
+   Las variables privadas (`DATABASE_URL`, `DIRECT_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `CULQI_SECRET_KEY`,
+   `CULQI_WEBHOOK_SECRET` y `RESEND_API_KEY`) van **únicamente** en el
+   proyecto de la API; nunca usan el prefijo `NEXT_PUBLIC_` ni se copian a la
+   tienda. La excepción es el panel: su ruta de carga de imágenes necesita la
+   service role sólo del lado servidor y nunca la expone al navegador.
+5. Antes de desplegar, aplicar `database/payment-gateway-unique.sql` y
+   `database/enable-rls.sql` en la BD. El segundo bloquea el acceso directo
+   desde la Data API de Supabase: toda lectura y escritura de negocio pasa por
+   el API autenticado.
    Si falla por duplicados, revisarlos; no borrarlos automáticamente.
 6. Desplegar y comprobar `https://TU-API.vercel.app/api/v1/health`.
 

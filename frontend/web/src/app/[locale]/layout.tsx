@@ -70,7 +70,18 @@ export default async function RootLayout({
           <main className="flex-1 bg-[#F8F8F8]">
             {children}
           </main>
-          <Footer initialStoreName={storeName} initialDescription={storeDescription} initialSocialLinks={socialLinks} />
+          <Footer
+            initialStoreName={storeName}
+            initialDescription={storeDescription}
+            initialSocialLinks={socialLinks}
+            initialLegalInfo={{
+              legalName: store?.legalName,
+              businessRuc: store?.businessRuc,
+              businessAddress: store?.businessAddress,
+              contactEmail: store?.contactEmail,
+              contactPhone: store?.contactPhone,
+            }}
+          />
         </NextIntlClientProvider>
       </body>
     </html>

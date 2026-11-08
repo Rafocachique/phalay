@@ -48,6 +48,7 @@ export default function ProductosList({ initialProducts }: { initialProducts: an
           <tr className="border-b border-gray-100">
             <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider w-24">Orden</th>
             <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider">Producto</th>
+            <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider">Catálogo y colecciones</th>
             <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider">Precio</th>
             <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider">Stock</th>
             <th className="pb-4 font-bold text-sm text-gray-500 uppercase tracking-wider">Ventas</th>
@@ -76,6 +77,14 @@ export default function ProductosList({ initialProducts }: { initialProducts: an
                     <ArrowDown size={16} />
                   </button>
                 </div>
+              </td>
+              <td className="py-4 min-w-52">
+                <p className="text-xs font-bold text-gray-700">{prod.category?.name || 'Sin tipo de prenda'}</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {prod.collections?.length
+                    ? prod.collections.map((collection: any) => collection.name).join(' · ')
+                    : 'Sin colección'}
+                </p>
               </td>
               <td className="py-4">
                 <div className="flex items-center gap-4">
@@ -117,6 +126,7 @@ export default function ProductosList({ initialProducts }: { initialProducts: an
                   type="product"
                   entityName={`el producto "${prod.name}"`} 
                   className="text-red-500 hover:text-red-700 font-bold text-sm transition-colors" 
+                  onDeleted={(id) => setProducts((current) => current.filter((item) => item.id !== id))}
                 />
               </td>
             </tr>

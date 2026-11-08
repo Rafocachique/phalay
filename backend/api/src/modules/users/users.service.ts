@@ -35,8 +35,8 @@ export class UsersService {
     const [totalUsers, totalCustomers, newThisMonth, newPrevMonth] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { role: 'CUSTOMER' } }),
-      this.prisma.user.count({ where: { createdAt: { gte: startOfThisMonth } } }),
-      this.prisma.user.count({ where: { createdAt: { gte: startOfPrevMonth, lt: startOfThisMonth } } }),
+      this.prisma.user.count({ where: { role: 'CUSTOMER', createdAt: { gte: startOfThisMonth } } }),
+      this.prisma.user.count({ where: { role: 'CUSTOMER', createdAt: { gte: startOfPrevMonth, lt: startOfThisMonth } } }),
     ]);
 
     return { totalUsers, totalCustomers, newThisMonth, newPrevMonth };
