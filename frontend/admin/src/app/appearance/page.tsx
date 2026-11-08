@@ -36,6 +36,7 @@ export default async function AppearancePage() {
         initialBannerUrl={bannerUrl}
         initialTitle={title}
         initialSubtitle={subtitle}
+        initialBranding={branding}
       />
 
       <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 mb-8 mt-8">

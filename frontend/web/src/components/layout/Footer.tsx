@@ -1,8 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Instagram, Facebook, MessageCircle, Send } from 'lucide-react';
-import { useEffect } from 'react';
+import { Instagram, Facebook, MessageCircle, Send, Music2 } from 'lucide-react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useStoreSettingsStore } from '@/store/useStoreSettingsStore';
 
 interface FooterProps {
@@ -11,6 +11,7 @@ interface FooterProps {
   initialSocialLinks?: {
     instagram?: string;
     facebook?: string;
+    tiktok?: string;
     whatsapp?: string;
   };
   initialLegalInfo?: {
@@ -27,6 +28,11 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
   const locale = params?.locale || 'es';
   
   const { settings, setSettings } = useStoreSettingsStore();
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterWebsite, setNewsletterWebsite] = useState('');
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
+  const [newsletterMessage, setNewsletterMessage] = useState('');
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
   const whatsappNumber = (settings.socialLinks.whatsapp || '').replace(/\D/g, '').slice(-9);
   const whatsappHref = whatsappNumber ? `https://wa.me/51${whatsappNumber}` : '';
 
@@ -39,11 +45,43 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
         socialLinks: {
           instagram: initialSocialLinks?.instagram || '',
           facebook: initialSocialLinks?.facebook || '',
+          tiktok: initialSocialLinks?.tiktok || '',
           whatsapp: initialSocialLinks?.whatsapp || ''
         }
       });
     }
   }, [initialStoreName, initialDescription, initialSocialLinks, setSettings]);
+
+  async function subscribeToNewsletter(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const email = newsletterEmail.trim().toLowerCase();
+    if (!email) {
+      setNewsletterMessage('Ingresa tu correo electrónico.');
+      return;
+    }
+    if (!newsletterConsent) {
+      setNewsletterMessage('Debes aceptar la Política de Privacidad para suscribirte.');
+      return;
+    }
+
+    setNewsletterLoading(true);
+    setNewsletterMessage('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/newsletter/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, website: newsletterWebsite, consent: newsletterConsent }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || 'No pudimos registrar tu correo.');
+      setNewsletterMessage(payload.message || '¡Listo! Tu correo quedó registrado.');
+      setNewsletterEmail('');
+    } catch (error) {
+      setNewsletterMessage(error instanceof Error ? error.message : 'No pudimos registrar tu correo.');
+    } finally {
+      setNewsletterLoading(false);
+    }
+  }
 
   return (
     <footer className="bg-white border-t border-gray-150 pt-20 pb-10">
@@ -58,6 +96,9 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
               )}
               {settings.socialLinks.facebook && (
                 <a href={settings.socialLinks.facebook} target="_blank" rel="noopener noreferrer" aria-label="Síguenos en Facebook" title="Facebook" className="text-[#1877F2] transition-colors hover:text-[#166FE5]"><Facebook size={20} /></a>
+              )}
+              {settings.socialLinks.tiktok && (
+                <a href={settings.socialLinks.tiktok} target="_blank" rel="noopener noreferrer" aria-label="Síguenos en TikTok" title="TikTok" className="text-black transition-colors hover:text-[#FF0050]"><Music2 size={20} /></a>
               )}
               {whatsappHref && (
                 <a href={whatsappHref} target="_blank" rel="noopener noreferrer" aria-label="Escríbenos por WhatsApp" title="Escríbenos por WhatsApp" className="inline-flex h-5 w-5 items-center justify-center text-[#25D366] transition-colors hover:text-[#1FB957]">
@@ -91,12 +132,21 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
           <div>
             <h3 className="font-serif font-semibold text-lg text-gray-900 mb-6 uppercase tracking-wider">Boletín</h3>
             <p className="text-base text-gray-600 font-medium mb-4 leading-relaxed">Únete para recibir acceso exclusivo a lanzamientos.</p>
-            <div className="flex">
-              <input type="email" placeholder="Email" className="flex-1 bg-gray-50 border border-gray-200 rounded-l-lg px-4 py-3 text-base focus:outline-none focus:border-[#8B5A5A]" />
-              <button className="bg-[#8B5A5A] text-white px-5 py-3 rounded-r-lg hover:bg-[#A87474] flex items-center justify-center transition-colors">
-                <Send size={18} />
-              </button>
-            </div>
+            <form onSubmit={subscribeToNewsletter} className="space-y-2">
+              <label className="sr-only" htmlFor="newsletter-email">Correo electrónico</label>
+              <div className="flex">
+                <input id="newsletter-email" type="email" required autoComplete="email" value={newsletterEmail} onChange={(event) => setNewsletterEmail(event.target.value)} placeholder="Tu correo electrónico" className="min-w-0 flex-1 bg-gray-50 border border-gray-200 rounded-l-lg px-4 py-3 text-base focus:outline-none focus:border-[#8B5A5A]" />
+                <button type="submit" disabled={newsletterLoading} aria-label="Suscribirme al boletín" className="bg-[#8B5A5A] text-white px-5 py-3 rounded-r-lg hover:bg-[#A87474] disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center transition-colors">
+                  <Send size={18} />
+                </button>
+              </div>
+              <input tabIndex={-1} autoComplete="off" aria-hidden="true" value={newsletterWebsite} onChange={(event) => setNewsletterWebsite(event.target.value)} className="absolute -left-[10000px] h-px w-px opacity-0" name="website" />
+              <label className="flex cursor-pointer items-start gap-2 text-xs leading-5 text-gray-500">
+                <input type="checkbox" checked={newsletterConsent} onChange={(event) => setNewsletterConsent(event.target.checked)} className="mt-1 h-3.5 w-3.5 accent-[#8B5A5A]" />
+                <span>Acepto el tratamiento de mis datos para recibir novedades, conforme a la <Link href={`/${locale}/legal/privacidad`} className="underline hover:text-[#8B5A5A]">Política de Privacidad</Link>.</span>
+              </label>
+              {newsletterMessage && <p role="status" className="text-sm text-gray-600">{newsletterMessage}</p>}
+            </form>
           </div>
         </div>
 

@@ -20,6 +20,8 @@ model SystemSettings {
   legalName        String?  @map("legal_name")
   businessRuc      String?  @map("business_ruc")
   businessAddress  String?  @map("business_address")
+  legalPrivacyContent String @default("") @map("legal_privacy_content")
+  legalTermsContent   String @default("") @map("legal_terms_content")
   socialLinks      Json     @default("{}") @map("social_links")
   updatedAt        DateTime @updatedAt @map("updated_at")
   storeDescription String?  @map("store_description")
@@ -83,6 +85,24 @@ model Faq {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("faqs")
+}
+
+/// Personas que aceptaron recibir novedades de la tienda. Es una lista
+/// independiente de las cuentas para no crear usuarios ni exponer datos de
+/// clientes sólo por suscribirse al boletín.
+model NewsletterSubscriber {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  status       String   @default("ACTIVE")
+  source       String   @default("FOOTER")
+  consentAt    DateTime @default(now()) @map("consent_at")
+  subscribedAt DateTime @default(now()) @map("subscribed_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  unsubscribedAt DateTime? @map("unsubscribed_at")
+
+  @@index([status])
+  @@index([subscribedAt])
+  @@map("newsletter_subscribers")
 }
 
 model User {

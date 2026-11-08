@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm run db:generate && pnpm run build"
+  "buildCommand": "pnpm run db:sync && pnpm run db:generate && pnpm run build"
 }

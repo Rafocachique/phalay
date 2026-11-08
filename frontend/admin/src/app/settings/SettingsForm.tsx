@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Store, Instagram, Facebook, Mail, MapPin, MessageCircle, ReceiptText } from 'lucide-react';
+import { Store, Instagram, Facebook, Mail, MapPin, MessageCircle, ReceiptText, Music2 } from 'lucide-react';
 import { updateStoreSettings } from '@/app/actions/store';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
@@ -26,6 +26,7 @@ export default function SettingsForm() {
     socialLinks: {
       instagram: '',
       facebook: '',
+      tiktok: '',
       whatsapp: ''
     }
   });
@@ -49,6 +50,7 @@ export default function SettingsForm() {
           socialLinks: {
             instagram: data.socialLinks?.instagram || '',
             facebook: data.socialLinks?.facebook || '',
+            tiktok: data.socialLinks?.tiktok || '',
             whatsapp: normalizeWhatsAppNumber(data.socialLinks?.whatsapp || '')
           }
         });
@@ -216,6 +218,20 @@ export default function SettingsForm() {
                   value={settings.socialLinks.facebook}
                   onChange={e => setSettings({...settings, socialLinks: {...settings.socialLinks, facebook: e.target.value}})}
                   placeholder="https://facebook.com/tu_pagina" 
+                  className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  <Music2 size={16} className="text-black" />
+                  TikTok URL
+                </label>
+                <input
+                  type="url"
+                  value={settings.socialLinks.tiktok}
+                  onChange={e => setSettings({...settings, socialLinks: {...settings.socialLinks, tiktok: e.target.value}})}
+                  placeholder="https://tiktok.com/@tu_cuenta"
                   className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900"
                 />
               </div>

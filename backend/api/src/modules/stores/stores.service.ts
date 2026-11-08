@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { DEFAULT_PRIVACY_CONTENT, DEFAULT_TERMS_CONTENT } from './legal-defaults';
 
 @Injectable()
 export class StoresService {
@@ -11,7 +12,18 @@ export class StoresService {
       settings = await this.prisma.systemSettings.create({
         data: {
           storeName: 'Mi Tienda',
+          legalPrivacyContent: DEFAULT_PRIVACY_CONTENT,
+          legalTermsContent: DEFAULT_TERMS_CONTENT,
         }
+      });
+    }
+    if (!settings.legalPrivacyContent || !settings.legalTermsContent) {
+      settings = await this.prisma.systemSettings.update({
+        where: { id: settings.id },
+        data: {
+          legalPrivacyContent: settings.legalPrivacyContent || DEFAULT_PRIVACY_CONTENT,
+          legalTermsContent: settings.legalTermsContent || DEFAULT_TERMS_CONTENT,
+        },
       });
     }
     return settings;
@@ -45,6 +57,8 @@ export class StoresService {
       legalName: settings.legalName,
       businessRuc: settings.businessRuc,
       businessAddress: settings.businessAddress,
+      legalPrivacyContent: settings.legalPrivacyContent,
+      legalTermsContent: settings.legalTermsContent,
       socialLinks,
       branding: socialLinks.branding || {},
       // Métodos de pago disponibles y lo que la clienta necesita para pagar
@@ -107,6 +121,8 @@ export class StoresService {
         legalName: data.legalName !== undefined ? data.legalName : undefined,
         businessRuc: data.businessRuc !== undefined ? data.businessRuc : undefined,
         businessAddress: data.businessAddress !== undefined ? data.businessAddress : undefined,
+        legalPrivacyContent: data.legalPrivacyContent !== undefined ? String(data.legalPrivacyContent).slice(0, 20000) : undefined,
+        legalTermsContent: data.legalTermsContent !== undefined ? String(data.legalTermsContent).slice(0, 20000) : undefined,
         bannerUrl: data.bannerUrl !== undefined ? data.bannerUrl : undefined,
         socialLinks: currentSocialLinks,
         // Configuración de métodos de pago del checkout

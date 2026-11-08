@@ -8,12 +8,22 @@ export async function updateStoreAppearance(formData: FormData) {
   const bannerUrl = formData.get('bannerUrl') as string;
   const title = formData.get('title') as string;
   const subtitle = formData.get('subtitle') as string;
+  const textPosition = formData.get('textPosition') as string;
+  const textColor = formData.get('textColor') as string;
+  const textShadow = formData.get('textShadow') as string;
+  const fontStyle = formData.get('fontStyle') as string;
+  const overlayOpacity = formData.get('overlayOpacity') as string;
 
   const payload = {
     bannerUrl,
     branding: {
       heroTitle: title,
-      heroSubtitle: subtitle
+      heroSubtitle: subtitle,
+      heroTextPosition: textPosition,
+      heroTextColor: textColor,
+      heroTextShadow: textShadow,
+      heroFontStyle: fontStyle,
+      heroOverlayOpacity: Math.max(0, Math.min(70, Number(overlayOpacity) || 0)),
     }
   };
 
@@ -100,7 +110,7 @@ export async function updateStoreSettings(data: {
   businessAddress: string;
   contactEmail: string;
   contactPhone: string;
-  socialLinks: { instagram: string; facebook: string; whatsapp: string };
+  socialLinks: { instagram: string; facebook: string; tiktok: string; whatsapp: string };
 }) {
   try {
     const authHeaders = await getAuthHeader();
@@ -121,5 +131,23 @@ export async function updateStoreSettings(data: {
     return { success: true };
   } catch (error) {
     return { error: 'Error de conexión con la API' };
+  }
+}
+
+export async function updateLegalDocuments(data: { legalPrivacyContent: string; legalTermsContent: string }) {
+  try {
+    const authHeaders = await getAuthHeader();
+    const response = await fetch(`${API_BASE_URL}/stores`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      return { error: err.message || 'Error al guardar los documentos legales.' };
+    }
+    return { success: true };
+  } catch {
+    return { error: 'Error de conexión con la API.' };
   }
 }

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 interface SocialLinks {
   instagram?: string;
   facebook?: string;
+  tiktok?: string;
   whatsapp?: string;
 }
 
@@ -33,6 +34,7 @@ export const useStoreSettingsStore = create<StoreSettingsState>((set) => ({
     socialLinks: {
       instagram: '',
       facebook: '',
+      tiktok: '',
       whatsapp: '',
     },
   },
@@ -53,6 +55,7 @@ export const useStoreSettingsStore = create<StoreSettingsState>((set) => ({
             socialLinks: {
               instagram: data.socialLinks?.instagram || '',
               facebook: data.socialLinks?.facebook || '',
+              tiktok: data.socialLinks?.tiktok || '',
               whatsapp: data.socialLinks?.whatsapp || '',
             },
           },

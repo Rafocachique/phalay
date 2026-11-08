@@ -13,7 +13,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist .turbo",
-    "db:generate": "prisma generate --schema=../database/prisma/schema.prisma"
+    "db:generate": "prisma generate --schema=../database/prisma/schema.prisma",
+    "db:sync": "prisma db push --schema=../database/prisma/schema.prisma"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^3.1.3",

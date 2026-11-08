@@ -1,76 +1,60 @@
 'use client';
+
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { getStoreSettings, updateLegalDocuments } from '@/app/actions/store';
 
 export default function LegalPage() {
+  const [privacy, setPrivacy] = useState('');
+  const [terms, setTerms] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getStoreSettings().then((settings) => {
+      setPrivacy(settings?.legalPrivacyContent || '');
+      setTerms(settings?.legalTermsContent || '');
+      setLoading(false);
+    });
+  }, []);
+
+  async function save() {
+    if (!privacy.trim() || !terms.trim()) {
+      toast.error('Completa ambos documentos antes de guardar.');
+      return;
+    }
+    setSaving(true);
+    const result = await updateLegalDocuments({ legalPrivacyContent: privacy, legalTermsContent: terms });
+    setSaving(false);
+    if (result.success) toast.success('Documentos legales guardados y publicados.');
+    else toast.error(result.error || 'No se pudieron guardar los documentos.');
+  }
+
+  if (loading) return <div className="py-12 text-center font-bold text-gray-500">Cargando documentos legales…</div>;
+
   return (
     <div className="animate-enter w-full">
       <div className="mb-8">
         <h1 className="text-4xl font-black text-gray-900">Documentos Legales</h1>
-        <p className="text-sm text-gray-500 mt-2">Gestiona los textos legales de tu tienda en cumplimiento con la Ley N° 29733 (Protección de Datos Personales) y términos comerciales.</p>
+        <p className="mt-2 text-sm text-gray-500">Estos textos se guardan en la base de datos y son exactamente los que se muestran en la tienda.</p>
       </div>
-
-      <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 mb-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <span className="text-[#8B5A5A]">⚖️</span> Políticas de Privacidad
-        </h2>
-        
-        <form className="space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Contenido de Políticas (Soporta Markdown/HTML)</label>
-            <textarea 
-              rows={8}
-              defaultValue="En PHALAY nos comprometemos a proteger la privacidad de nuestros clientes, cumpliendo con la Ley N° 29733, Ley de Protección de Datos Personales de Perú.
-              
-Tus datos serán utilizados exclusivamente para:
-1. Procesar compras y envíos.
-2. Comunicación sobre estados del pedido.
-3. Envío de promociones (solo si te has suscrito)."
-              className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 text-sm font-medium resize-y"
-            />
-          </div>
-
-          <div className="pt-4 border-t border-gray-100 flex justify-end">
-            <button 
-              type="button" 
-              onClick={() => toast.success('Políticas guardadas correctamente')}
-              className="bg-[#8B5A5A] hover:bg-[#A87474] text-white px-8 py-3.5 rounded-xl font-bold transition-colors"
-            >
-              Guardar Políticas
-            </button>
-          </div>
-        </form>
+      <div className="mb-6 rounded-2xl border border-[#EBD9D7] bg-[#FFF9F8] p-4 text-sm text-gray-600">
+        Usa párrafos separados por una línea vacía y títulos numerados. Puedes incluir <strong>{'{{storeName}}'}</strong>, <strong>{'{{legalName}}'}</strong>, <strong>{'{{businessRuc}}'}</strong>, <strong>{'{{businessAddress}}'}</strong> y <strong>{'{{contactEmail}}'}</strong>; se reemplazan por la configuración actual de tu tienda.
       </div>
-
-      <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 mb-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <span className="text-[#8B5A5A]">📜</span> Términos y Condiciones
-        </h2>
-        
-        <form className="space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Contenido de Términos (Soporta Markdown/HTML)</label>
-            <textarea 
-              rows={8}
-              defaultValue="Bienvenido a PHALAY Digital Atelier.
-              
-Al utilizar nuestro sitio web y realizar compras, aceptas los siguientes términos:
-- Los precios están expresados en Soles (S/) e incluyen IGV.
-- Nos reservamos el derecho a modificar los precios en cualquier momento.
-- Para solicitar devoluciones, cuentas con 7 días hábiles tras recibir el pedido, sujeto a revisión de la prenda."
-              className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 text-sm font-medium resize-y"
-            />
-          </div>
-
-          <div className="pt-4 border-t border-gray-100 flex justify-end">
-            <button 
-              type="button" 
-              onClick={() => toast.success('Términos guardados correctamente')}
-              className="bg-[#8B5A5A] hover:bg-[#A87474] text-white px-8 py-3.5 rounded-xl font-bold transition-colors"
-            >
-              Guardar Términos
-            </button>
-          </div>
-        </form>
+      <div className="space-y-8">
+        <section className="rounded-[2rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <h2 className="mb-5 text-xl font-bold text-gray-900">⚖️ Políticas de Privacidad</h2>
+          <textarea value={privacy} onChange={(e) => setPrivacy(e.target.value)} rows={18} className="w-full rounded-xl bg-[#F8F9FA] px-4 py-3.5 text-sm leading-6 text-gray-900 outline-none focus:bg-white focus:ring-1 focus:ring-[#8B5A5A]" />
+        </section>
+        <section className="rounded-[2rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <h2 className="mb-5 text-xl font-bold text-gray-900">📜 Términos y Condiciones</h2>
+          <textarea value={terms} onChange={(e) => setTerms(e.target.value)} rows={18} className="w-full rounded-xl bg-[#F8F9FA] px-4 py-3.5 text-sm leading-6 text-gray-900 outline-none focus:bg-white focus:ring-1 focus:ring-[#8B5A5A]" />
+        </section>
+      </div>
+      <div className="sticky bottom-4 mt-6 flex justify-end">
+        <button type="button" onClick={save} disabled={saving} className="rounded-xl bg-[#8B5A5A] px-8 py-3.5 font-bold text-white shadow-sm transition-colors hover:bg-[#A87474] disabled:opacity-50">
+          {saving ? 'Guardando…' : 'Guardar y publicar documentos'}
+        </button>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { updateStoreAppearance } from '@/app/actions/store';
 import { LayoutTemplate } from 'lucide-react';
 import ImageUpload from '@/components/ImageUpload';
 
-export default function AppearanceForm({ initialBannerUrl, initialTitle, initialSubtitle }: { initialBannerUrl: string, initialTitle: string, initialSubtitle: string }) {
+export default function AppearanceForm({ initialBannerUrl, initialTitle, initialSubtitle, initialBranding }: { initialBannerUrl: string, initialTitle: string, initialSubtitle: string, initialBranding: Record<string, any> }) {
   const [bannerUrl, setBannerUrl] = useState(initialBannerUrl);
 
   async function clientAction(formData: FormData) {
@@ -69,6 +69,25 @@ export default function AppearanceForm({ initialBannerUrl, initialTitle, initial
               className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 font-medium"
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 pt-6">
+          <label className="text-sm font-bold text-gray-900">Posición del texto
+            <select name="textPosition" defaultValue={initialBranding.heroTextPosition || 'bottom-center'} className="mt-2 w-full rounded-xl bg-[#F8F9FA] px-4 py-3.5 font-medium outline-none focus:bg-white focus:ring-1 focus:ring-[#8B5A5A]"><option value="top-left">Arriba a la izquierda</option><option value="top-center">Arriba centrado</option><option value="center-left">Centro a la izquierda</option><option value="center">Centro</option><option value="center-right">Centro a la derecha</option><option value="bottom-left">Abajo a la izquierda</option><option value="bottom-center">Abajo centrado</option><option value="bottom-right">Abajo a la derecha</option></select>
+          </label>
+          <label className="text-sm font-bold text-gray-900">Estilo de letra
+            <select name="fontStyle" defaultValue={initialBranding.heroFontStyle || 'serif'} className="mt-2 w-full rounded-xl bg-[#F8F9FA] px-4 py-3.5 font-medium outline-none focus:bg-white focus:ring-1 focus:ring-[#8B5A5A]"><option value="serif">Elegante serif</option><option value="sans">Moderna sans</option></select>
+          </label>
+          <label className="text-sm font-bold text-gray-900">Color del texto
+            <input name="textColor" type="color" defaultValue={initialBranding.heroTextColor || '#ffffff'} className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-[#F8F9FA] p-2" />
+          </label>
+          <label className="text-sm font-bold text-gray-900">Sombra del texto
+            <select name="textShadow" defaultValue={initialBranding.heroTextShadow || 'soft'} className="mt-2 w-full rounded-xl bg-[#F8F9FA] px-4 py-3.5 font-medium outline-none focus:bg-white focus:ring-1 focus:ring-[#8B5A5A]"><option value="none">Sin sombra</option><option value="soft">Suave</option><option value="strong">Intensa</option></select>
+          </label>
+          <label className="text-sm font-bold text-gray-900 md:col-span-2">Oscurecer imagen para mejorar contraste
+            <input name="overlayOpacity" type="range" min="0" max="70" step="5" defaultValue={initialBranding.heroOverlayOpacity ?? 25} className="mt-3 w-full accent-[#8B5A5A]" />
+            <span className="mt-1 block text-xs font-normal text-gray-500">Úsalo si la foto es clara y el texto pierde legibilidad.</span>
+          </label>
         </div>
 
         <div className="pt-4 border-t border-gray-100 flex justify-end">

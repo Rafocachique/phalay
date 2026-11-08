@@ -18,6 +18,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
 import { ClaimsModule } from './modules/claims/claims.module';
+import { NewsletterModule } from './modules/newsletter/newsletter.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ClaimsModule } from './modules/claims/claims.module';
     CategoriesModule,
     ShippingModule,
     ClaimsModule,
+    NewsletterModule,
   ],
   providers: [
     {
