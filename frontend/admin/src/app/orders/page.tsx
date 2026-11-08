@@ -36,6 +36,12 @@ export default async function OrdersPage() {
       ) : (
         <div className="space-y-6">
           {orders.map((order: any) => {
+            const shippingPayment = order.payments?.find((payment: any) => payment.metadata?.purpose === 'SHIPPING');
+            const shippingPaymentPending = Boolean(
+              shippingPayment &&
+              !order.isShippingPaid &&
+              ['INITIATED', 'FAILED'].includes(shippingPayment.status),
+            );
             const formattedDate = new Date(order.createdAt).toLocaleDateString('es-PE', {
               day: 'numeric',
               month: 'long',
@@ -82,6 +88,8 @@ export default async function OrdersPage() {
                     paymentStatus={order.paymentStatus}
                     paymentMethod={order.paymentMethod}
                     total={order.total}
+                    shippingPaymentPending={shippingPaymentPending}
+                    shippingCost={order.shippingCost}
                   />
                 </div>
 

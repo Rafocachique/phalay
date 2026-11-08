@@ -20,6 +20,8 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
   const locale = params?.locale || 'es';
   
   const { settings, setSettings } = useStoreSettingsStore();
+  const whatsappNumber = (settings.socialLinks.whatsapp || '').replace(/\D/g, '').slice(-9);
+  const whatsappHref = whatsappNumber ? `https://wa.me/51${whatsappNumber}` : '';
 
   useEffect(() => {
     // Si recibimos props iniciales y el store aún tiene valores por defecto, los seteamos
@@ -50,8 +52,11 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
               {settings.socialLinks.facebook && (
                 <a href={settings.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-[#8B5A5A] transition-colors"><Facebook size={20} /></a>
               )}
-              {settings.socialLinks.whatsapp && (
-                <a href={settings.socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="hover:text-[#8B5A5A] transition-colors"><MessageCircle size={20} /></a>
+              {whatsappHref && (
+                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" aria-label="Escríbenos por WhatsApp" title="Escríbenos por WhatsApp" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#1FB957]">
+                  <MessageCircle size={17} fill="currentColor" className="text-white" />
+                  WhatsApp
+                </a>
               )}
             </div>
           </div>

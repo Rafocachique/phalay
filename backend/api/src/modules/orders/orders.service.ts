@@ -515,6 +515,9 @@ export class OrdersService {
         },
         customer: true,
         address: true,
+        payments: { select: { method: true, status: true, amount: true, metadata: true } },
+        missingRequests: { select: { status: true } },
+        destination: { select: { district: true, department: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

@@ -6,6 +6,12 @@ import { updateStoreSettings } from '@/app/actions/store';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
+function normalizeWhatsAppNumber(value: string) {
+  const digits = value.replace(/\D/g, '');
+  // Acepta el enlace antiguo wa.me/519XXXXXXXX y muestra sólo el número local.
+  return digits.length >= 9 ? digits.slice(-9) : digits;
+}
+
 export default function SettingsForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,7 +39,7 @@ export default function SettingsForm() {
           socialLinks: {
             instagram: data.socialLinks?.instagram || '',
             facebook: data.socialLinks?.facebook || '',
-            whatsapp: data.socialLinks?.whatsapp || ''
+            whatsapp: normalizeWhatsAppNumber(data.socialLinks?.whatsapp || '')
           }
         });
       }
@@ -140,15 +146,19 @@ export default function SettingsForm() {
               <div>
                 <label className="block text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
                   <MessageCircle size={16} className="text-green-600" />
-                  WhatsApp URL
+                  WhatsApp de atención
                 </label>
                 <input 
-                  type="url" 
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={9}
+                  pattern="\d{9}"
                   value={settings.socialLinks.whatsapp}
-                  onChange={e => setSettings({...settings, socialLinks: {...settings.socialLinks, whatsapp: e.target.value}})}
-                  placeholder="https://wa.me/51999999999" 
+                  onChange={e => setSettings({...settings, socialLinks: {...settings.socialLinks, whatsapp: normalizeWhatsAppNumber(e.target.value)}})}
+                  placeholder="999 888 777"
                   className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900"
                 />
+                <p className="mt-1.5 text-xs text-gray-500">Ingresa sólo los 9 dígitos. Crearemos el enlace de WhatsApp automáticamente.</p>
               </div>
             </div>
           </div>

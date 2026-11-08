@@ -26,13 +26,13 @@ export function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
-      <div className="w-full max-w-md rounded-[2rem] border border-[#E8C5C4] bg-white p-7 shadow-2xl sm:p-8">
-        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FBEFEF] text-[#A34D4D]">
-          <AlertTriangle size={27} strokeWidth={2.3} />
+      <div className="w-full max-w-lg rounded-3xl border border-[#E8C5C4] bg-white p-6 shadow-2xl sm:p-7">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FBEFEF] text-[#A34D4D]">
+          <AlertTriangle size={24} strokeWidth={2.3} />
         </div>
-        <h2 id="confirm-dialog-title" className="text-xl font-black tracking-tight text-gray-900">{title}</h2>
+        <h2 id="confirm-dialog-title" className="text-lg font-black tracking-tight text-gray-900 sm:text-xl">{title}</h2>
         <div className="mt-2 text-sm leading-6 text-gray-500">{description}</div>
-        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <div className="mt-6 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
           <button type="button" onClick={onCancel} disabled={busy} className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50">
             Cancelar
           </button>
