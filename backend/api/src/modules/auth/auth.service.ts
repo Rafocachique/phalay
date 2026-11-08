@@ -335,6 +335,18 @@ export class AuthService implements OnModuleInit {
       return { success: false, error: 'Código incorrecto.' };
     }
 
+    // El código propio de PHALAY también debe confirmar la cuenta en Supabase.
+    // Si sólo se actualiza PostgreSQL, Supabase puede seguir bloqueando el
+    // inicio de sesión con contraseña como "correo no confirmado".
+    const { error: confirmError } = await this.supabase.auth.admin.updateUserById(
+      user.supabaseAuthId,
+      { email_confirm: true },
+    );
+    if (confirmError) {
+      this.logger.error(`No se pudo confirmar el correo en Supabase para ${email}: ${confirmError.message}`);
+      return { success: false, error: 'No pudimos confirmar tu correo. Intenta nuevamente en unos minutos.' };
+    }
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: {

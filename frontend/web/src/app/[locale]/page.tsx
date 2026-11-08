@@ -2,43 +2,27 @@ import Link from 'next/link';
 import ColeccionesCarousel from '@/components/ColeccionesCarousel';
 import NovedadesCarousel from '@/components/NovedadesCarousel';
 import CategoriasCarousel from '@/components/CategoriasCarousel';
+import { fetchPublicApi } from '@/lib/public-api';
 
 // Forzar que esta página NUNCA se guarde en caché - siempre datos frescos de la BD
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import { storesService, productsService, collectionsService, categoriesService } from '@phalay/services';
-
 async function getStore() {
-  try {
-    return await storesService.getStore();
-  } catch {
-    return null;
-  }
+  return fetchPublicApi<Record<string, any> | null>('/stores', null);
 }
 
 async function getProducts() {
-  try {
-    return await productsService.findAll({ limit: 5 });
-  } catch {
-    return [];
-  }
+  const products = await fetchPublicApi<any[]>('/products', []);
+  return products.slice(0, 5);
 }
 
 async function getCollections() {
-  try {
-    return await collectionsService.findAll();
-  } catch {
-    return [];
-  }
+  return fetchPublicApi<any[]>('/collections', []);
 }
 
 async function getCategories() {
-  try {
-    return await categoriesService.findAll();
-  } catch {
-    return [];
-  }
+  return fetchPublicApi<any[]>('/categories', []);
 }
 
 const COLLECTION_FALLBACKS = [

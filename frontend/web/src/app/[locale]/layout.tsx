@@ -5,20 +5,14 @@ import '../globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { createClient } from '@/lib/supabase/server';
+import { fetchPublicApi } from '@/lib/public-api';
 
 // Nunca cachear el layout — siempre leer datos frescos de la API
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import { storesService } from '@phalay/services';
-
 async function getStoreData() {
-  try {
-    return await storesService.getStore();
-  } catch (err) {
-    console.error('Error fetching store data:', err);
-    return null;
-  }
+  return fetchPublicApi<Record<string, any> | null>('/stores', null);
 }
 
 export const metadata: Metadata = {
