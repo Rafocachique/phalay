@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { reviewOrderPayment } from '@/app/actions/orders';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 /**
  * Confirmación manual del pago (Yape con QR).
@@ -23,14 +24,13 @@ export default function PaymentReview({
   total: string | number;
 }) {
   const [loading, setLoading] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
   const router = useRouter();
 
   // Los pagos con tarjeta o Yape automático los confirma Culqi, no el equipo.
   const isManual = paymentMethod?.toUpperCase() === 'TRANSFERENCIA';
 
   const handleReview = async (approved: boolean) => {
-    if (!approved && !confirm('¿Marcar este pago como no verificado?')) return;
-
     setLoading(true);
     const result = await reviewOrderPayment(orderId, approved);
     setLoading(false);
@@ -43,6 +43,8 @@ export default function PaymentReview({
     toast.success(approved ? 'Pago confirmado. El pedido pasó a Confirmado.' : 'Pago marcado como no verificado.');
     router.refresh();
   };
+
+  const rejectPayment = () => setShowRejectDialog(true);
 
   if (paymentStatus === 'COMPLETED') {
     return (
@@ -62,6 +64,7 @@ export default function PaymentReview({
 
   if (paymentStatus === 'FAILED') {
     return (
+      <>
       <div className="flex items-center gap-3">
         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700">
           <XCircle size={13} /> Pago no verificado
@@ -74,6 +77,16 @@ export default function PaymentReview({
           Confirmar de todas formas
         </button>
       </div>
+      <ConfirmDialog
+        open={showRejectDialog}
+        title="¿Marcar pago como no verificado?"
+        description="El pedido quedará pendiente para que puedas contactar a la clienta."
+        confirmLabel="Marcar como no verificado"
+        busy={loading}
+        onCancel={() => setShowRejectDialog(false)}
+        onConfirm={() => { setShowRejectDialog(false); handleReview(false); }}
+      />
+      </>
     );
   }
 
@@ -90,12 +103,21 @@ export default function PaymentReview({
         <CheckCircle2 size={13} /> Recibí S/ {Number(total).toFixed(2)}
       </button>
       <button
-        onClick={() => handleReview(false)}
+        onClick={rejectPayment}
         disabled={loading}
         className="inline-flex items-center gap-1.5 bg-white border border-gray-200 hover:border-red-300 hover:text-red-600 text-gray-500 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-50"
       >
         <XCircle size={13} /> No llegó
       </button>
+      <ConfirmDialog
+        open={showRejectDialog}
+        title="¿Marcar pago como no verificado?"
+        description="El pedido quedará pendiente para que puedas contactar a la clienta."
+        confirmLabel="Marcar como no verificado"
+        busy={loading}
+        onCancel={() => setShowRejectDialog(false)}
+        onConfirm={() => { setShowRejectDialog(false); handleReview(false); }}
+      />
     </div>
   );
 }

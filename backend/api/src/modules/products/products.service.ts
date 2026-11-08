@@ -8,6 +8,7 @@ export class ProductsService {
   async findAll() {
     return this.prisma.product.findMany({ 
       take: 50, // Límite de seguridad contra ataques OOM
+      where: { deletedAt: null },
       orderBy: [
         { position: 'asc' },
         { createdAt: 'desc' }
@@ -33,13 +34,13 @@ export class ProductsService {
       where: { id },
       include: { collections: true, images: true, variants: true },
     });
-    if (!product) throw new NotFoundException('Product not found');
+    if (!product || product.deletedAt) throw new NotFoundException('Product not found');
     return product;
   }
 
   async findBySlug(slug: string) {
     const product = await this.prisma.product.findFirst({
-      where: { slug },
+      where: { slug, deletedAt: null },
       include: {
         collections: true,
         images: true,
@@ -248,7 +249,16 @@ export class ProductsService {
   }
 
   async remove(id: string) {
-    return this.prisma.product.delete({ where: { id } });
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    if (!product || product.deletedAt) throw new NotFoundException('Producto no encontrado');
+
+    // Un producto puede estar vinculado a pedidos históricos. Archivarlo evita
+    // una violación de llave foránea, preserva el comprobante de la clienta y
+    // lo excluye de catálogo y checkout.
+    return this.prisma.product.update({
+      where: { id },
+      data: { deletedAt: new Date(), status: 'ARCHIVED' },
+    });
   }
 
   async assignCollection(productId: string, collectionId: string) {

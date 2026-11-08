@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Truck, Plus, Building, Edit2, Trash2, CheckCircle2, MapPin, User, Package } from 'lucide-react';
-import { Toaster, toast } from 'sonner';
+import { toast } from 'sonner';
 import { getDestinations, getShippingRequests, saveDestination, deleteDestination, resolveShippingRequest, resolveRequestWithNewDestination, getAgencies, createAgency, updateAgency, deleteAgency } from '@/app/actions/shipping';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const EMPTY_FORM = {
   type: 'LIMA_METROPOLITANA',
@@ -33,6 +34,11 @@ export default function EnviosPage() {
   // crear el destino y resolverla en una sola operación.
   const [resolvingRequest, setResolvingRequest] = useState<any | null>(null);
   const [formData, setFormData] = useState({ ...EMPTY_FORM });
+  const [pendingDelete, setPendingDelete] = useState<{ type: 'agency' | 'destination'; id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [agencyToRename, setAgencyToRename] = useState<any | null>(null);
+  const [agencyName, setAgencyName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -166,38 +172,44 @@ export default function EnviosPage() {
   };
 
   const handleRenameAgency = async (agency: any) => {
-    const name = prompt('Nuevo nombre de la agencia:', agency.name);
-    if (!name || name.trim() === agency.name) return;
-    const result = await updateAgency(agency.id, { name: name.trim() });
+    setAgencyToRename(agency);
+    setAgencyName(agency.name);
+  };
+
+  const saveAgencyName = async () => {
+    if (!agencyToRename || !agencyName.trim() || agencyName.trim() === agencyToRename.name) {
+      setAgencyToRename(null);
+      return;
+    }
+    setIsRenaming(true);
+    const result = await updateAgency(agencyToRename.id, { name: agencyName.trim() });
+    setIsRenaming(false);
     if ('error' in result) {
       toast.error(result.error || 'No se pudo renombrar');
       return;
     }
+    setAgencyToRename(null);
     toast.success('Agencia actualizada en todos sus destinos');
     fetchData();
   };
 
-  const handleDeleteAgency = async (agency: any) => {
-    if (!confirm(`¿Eliminar la agencia "${agency.name}"?`)) return;
-    const result = await deleteAgency(agency.id);
+  const confirmDeletion = async () => {
+    if (!pendingDelete) return;
+    setIsDeleting(true);
+    const result = pendingDelete.type === 'agency'
+      ? await deleteAgency(pendingDelete.id)
+      : await deleteDestination(pendingDelete.id);
+    setIsDeleting(false);
     if ('error' in result) {
       toast.error(result.error || 'No se pudo eliminar');
       return;
     }
-    toast.success('Agencia eliminada');
+    const wasAgency = pendingDelete.type === 'agency';
+    setPendingDelete(null);
+    toast.success(wasAgency ? 'Agencia eliminada' : 'Destino eliminado');
     fetchData();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este destino?')) return;
-    const result = await deleteDestination(id);
-    if ('error' in result) {
-      toast.error(result.error || 'Error al eliminar');
-      return;
-    }
-    toast.success('Destino eliminado');
-    fetchData();
-  };
 
   const handleResolveRequest = async (id: string, destinationId?: string) => {
     const result = await resolveShippingRequest(id, destinationId);
@@ -212,7 +224,6 @@ export default function EnviosPage() {
   return (
     <>
       <div className="animate-enter space-y-6">
-        <Toaster position="top-right" richColors />
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -330,7 +341,7 @@ export default function EnviosPage() {
                       <button onClick={() => handleToggleAgency(agency)} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                         {agency.isActive ? 'Desactivar' : 'Activar'}
                       </button>
-                      <button onClick={() => handleDeleteAgency(agency)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                      <button onClick={() => setPendingDelete({ type: 'agency', id: agency.id, name: agency.name })} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
                         <Trash2 size={16} />
                       </button>
                     </td>
@@ -374,7 +385,7 @@ export default function EnviosPage() {
                     <button onClick={() => handleOpenModal(dest)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => handleDelete(dest.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <button onClick={() => setPendingDelete({ type: 'destination', id: dest.id, name: dest.district || 'este destino' })} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                       <Trash2 size={16} />
                     </button>
                   </td>
@@ -423,7 +434,7 @@ export default function EnviosPage() {
                     <button onClick={() => handleOpenModal(dest)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => handleDelete(dest.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <button onClick={() => setPendingDelete({ type: 'destination', id: dest.id, name: dest.department || dest.province || 'este destino' })} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                       <Trash2 size={16} />
                     </button>
                   </td>
@@ -713,6 +724,29 @@ export default function EnviosPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title={pendingDelete?.type === 'agency' ? '¿Eliminar agencia?' : '¿Eliminar destino?'}
+        description={<>Vas a eliminar <strong className="text-gray-900">{pendingDelete?.name}</strong>. Esta acción no se puede deshacer.</>}
+        confirmLabel="Eliminar"
+        busy={isDeleting}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDeletion}
+      />
+      {agencyToRename && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="rename-agency-title">
+          <form onSubmit={(event) => { event.preventDefault(); saveAgencyName(); }} className="w-full max-w-md rounded-[2rem] border border-[#E8C5C4] bg-white p-7 shadow-2xl sm:p-8">
+            <h2 id="rename-agency-title" className="text-xl font-black tracking-tight text-gray-900">Renombrar agencia</h2>
+            <p className="mt-2 text-sm leading-6 text-gray-500">El nombre se actualizará en los destinos que usan esta agencia.</p>
+            <label className="mt-5 block text-xs font-bold uppercase tracking-wider text-gray-500">Nombre</label>
+            <input autoFocus value={agencyName} onChange={(event) => setAgencyName(event.target.value)} className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition-colors focus:border-[#8B5A5A] focus:bg-white" />
+            <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => setAgencyToRename(null)} disabled={isRenaming} className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50">Cancelar</button>
+              <button type="submit" disabled={isRenaming} className="rounded-xl bg-[#8B5A5A] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#6A3F3F] disabled:opacity-60">{isRenaming ? 'Guardando...' : 'Guardar cambios'}</button>
+            </div>
+          </form>
         </div>
       )}
     </>

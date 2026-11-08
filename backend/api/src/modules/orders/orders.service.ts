@@ -11,6 +11,21 @@ export class OrdersService {
     private readonly culqiService: CulqiService
   ) {}
 
+  private checkoutResponse(order: any, paymentId?: string) {
+    return {
+      success: true,
+      order: {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        items: order.items,
+      },
+      paymentDetails: { payment: { id: paymentId ?? null } },
+    };
+  }
+
   async reconcileCulqiOrder(gatewayId: string) {
     const remote = await this.culqiService.getOrder(gatewayId);
     if (remote.state !== 'paid') return;
@@ -137,6 +152,7 @@ export class OrdersService {
       missingDestinationName,
       culqiToken,
       culqiOrderId,
+      checkoutIdempotencyKey,
     } = data;
     // subtotal, shippingCost y total NUNCA se toman del cliente: se recalculan
     // server-side a partir de los precios reales de producto/variante y del
@@ -147,6 +163,9 @@ export class OrdersService {
     const method = String(paymentMethod || '').toLowerCase();
     const settings = await this.prisma.systemSettings.findFirst();
     const enabledByMethod: Record<string, boolean> = {
+      // Los interruptores reales están en el panel de administración.
+      // Conservamos los valores históricos para una instalación que aún no
+      // tenga una fila de configuración.
       tarjeta: settings?.paymentCardEnabled ?? true,
       yape: settings?.paymentYapeEnabled ?? true,
       transferencia: settings?.paymentManualEnabled ?? false,
@@ -192,6 +211,19 @@ export class OrdersService {
     if (method === 'tarjeta' && !culqiToken) {
       throw new BadRequestException('Se requiere un token de pago con tarjeta.');
     }
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!checkoutIdempotencyKey || !UUID_RE.test(String(checkoutIdempotencyKey))) {
+      throw new BadRequestException('La solicitud de compra no es válida. Recarga la página e inténtalo nuevamente.');
+    }
+
+    // El mismo intento siempre devuelve el primer pedido creado. Esto cubre
+    // doble clic, reintentos del navegador y respuestas perdidas por red.
+    const existingOrder = await this.prisma.order.findUnique({
+      where: { checkoutIdempotencyKey },
+      include: { items: true },
+    });
+    if (existingOrder) return this.checkoutResponse(existingOrder);
+
     const normalizedDni = dni ? String(dni) : null;
 
     // Consultar al proveedor antes de asociar un identificador enviado por el navegador.
@@ -271,12 +303,14 @@ export class OrdersService {
 
 
     // 4. Generar número de orden único
-    const orderNumber = `PH-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    const orderNumber = `PH-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 
     // 5. Validar stock, reducirlo y preparar items dentro de una transacción.
     // Los precios y el costo de envío se calculan aquí a partir de la BD,
     // nunca a partir de lo que envía el cliente.
-    const result = await this.prisma.$transaction(async (tx) => {
+    let result: any;
+    try {
+      result = await this.prisma.$transaction(async (tx) => {
       const orderItemsToCreate = [];
       let subtotal = 0;
 
@@ -324,6 +358,7 @@ export class OrdersService {
       const order = await tx.order.create({
         data: {
           orderNumber,
+          checkoutIdempotencyKey,
           customerId: user.id,
           addressId: shippingAddress.id,
           paymentMethod: method.toUpperCase(),
@@ -375,7 +410,13 @@ export class OrdersService {
           currency: 'PEN',
           method: method === 'tarjeta' ? 'TARJETA' : method.toUpperCase(),
           status: PaymentTransactionStatus.INITIATED,
-          gatewayTransactionId: method === 'yape' ? culqiOrderId || null : null,
+          // Reservar el identificador que entrega Culqi desde el inicio evita
+          // que dos solicitudes concurrentes utilicen el mismo pago.
+          gatewayTransactionId: method === 'tarjeta'
+            ? culqiToken
+            : method === 'yape'
+              ? culqiOrderId || null
+              : null,
         },
       });
       const paymentDetails = { payment };
@@ -384,7 +425,19 @@ export class OrdersService {
         order,
         paymentDetails,
       };
-    });
+      });
+    } catch (error: any) {
+      // La restricción única es la barrera final para dos procesos que pasan
+      // por la lectura inicial al mismo tiempo.
+      if (error?.code === 'P2002') {
+        const duplicatedOrder = await this.prisma.order.findUnique({
+          where: { checkoutIdempotencyKey },
+          include: { items: true },
+        });
+        if (duplicatedOrder) return this.checkoutResponse(duplicatedOrder);
+      }
+      throw error;
+    }
 
     // Realizar el cargo real de Culqi fuera de la transacción de DB para no bloquear.
     // Usamos el total calculado en el servidor (result.order.total), nunca el del cliente.
@@ -439,12 +492,10 @@ export class OrdersService {
     if (remoteOrder?.state === 'paid') await this.reconcileCulqiOrder(culqiOrderId);
     const current = await this.prisma.order.findUniqueOrThrow({ where: { id: result.order.id } });
     // El checkout público nunca devuelve relaciones ni campos internos de la cuenta.
-    return {
-      success: true,
-      order: { id: current.id, orderNumber: current.orderNumber, total: current.total,
-        status: current.status, paymentStatus: current.paymentStatus, items: result.order.items },
-      paymentDetails: { payment: { id: result.paymentDetails.payment.id } },
-    };
+    return this.checkoutResponse(
+      { ...current, items: result.order.items },
+      result.paymentDetails.payment.id,
+    );
   }
 
   async findAll() {
@@ -495,6 +546,9 @@ export class OrdersService {
    * Al confirmarlo, el pedido pasa a CONFIRMED y puede seguir al envío.
    */
   async reviewManualPayment(orderId: string, approved: boolean, reviewerId: string) {
+    if (typeof approved !== 'boolean') {
+      throw new BadRequestException('La decisión de pago no es válida.');
+    }
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Pedido no encontrado');
 
@@ -503,6 +557,19 @@ export class OrdersService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // Esta acción sólo es para el QR/WhatsApp. Un miembro del equipo nunca
+      // debe poder marcar como pagado un pedido cuya confirmación corresponde
+      // a Culqi.
+      const manualPayment = await tx.payment.findFirst({
+        where: { orderId, method: 'TRANSFERENCIA' },
+      });
+      if (!manualPayment) {
+        throw new BadRequestException('Este pedido no usa pago manual.');
+      }
+      if (manualPayment.status === PaymentTransactionStatus.COMPLETED) {
+        throw new BadRequestException('Este pedido ya figura como pagado.');
+      }
+
       const updated = await tx.order.update({
         where: { id: orderId },
         data: {
@@ -513,7 +580,7 @@ export class OrdersService {
       });
 
       await tx.payment.updateMany({
-        where: { orderId },
+        where: { id: manualPayment.id },
         data: {
           status: approved ? PaymentTransactionStatus.COMPLETED : PaymentTransactionStatus.FAILED,
         },

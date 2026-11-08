@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { deleteCatalogo } from '@/app/actions/catalog';
 import { deleteProduct } from '@/app/actions/products';
 import { deleteCollection } from '@/app/actions/collections';
 import { deleteOrder } from '@/app/actions/orders';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 interface DeleteButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'type'> {
   id: string;
@@ -19,14 +19,7 @@ interface DeleteButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonEl
 export function DeleteButton({ id, type, entityName = 'este elemento', className, children, ...props }: DeleteButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -56,51 +49,9 @@ export function DeleteButton({ id, type, entityName = 'este elemento', className
     }
   };
 
-  const modalContent = isOpen && (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-all duration-300">
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-2xl p-8 max-w-sm w-full transition-transform duration-300 scale-100 flex flex-col items-center text-center">
-        
-        {/* Warning Icon Container */}
-        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-6">
-          <AlertTriangle className="text-red-500" size={32} />
-        </div>
-
-        <h3 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">¿Estás seguro?</h3>
-        <p className="text-[14px] text-gray-500 mb-8 leading-relaxed max-w-xs">
-          Estás a punto de eliminar permanentemente <span className="font-semibold text-gray-900">{entityName}</span>. Esta acción no se puede deshacer.
-        </p>
-
-        <div className="flex gap-3 w-full">
-          <button 
-            type="button"
-            disabled={isDeleting}
-            onClick={() => setIsOpen(false)} 
-            className="flex-1 px-5 py-3.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 active:scale-95 transition-all duration-200"
-          >
-            Cancelar
-          </button>
-          <button 
-            type="button"
-            disabled={isDeleting}
-            onClick={handleDelete} 
-            className="flex-1 px-5 py-3.5 text-sm font-bold text-white bg-gradient-to-r from-red-600 to-red-500 rounded-2xl hover:from-red-700 hover:to-red-600 active:scale-95 shadow-lg shadow-red-500/20 transition-all duration-200 flex items-center justify-center gap-2"
-          >
-            {isDeleting ? (
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-            ) : (
-              'Eliminar'
-            )}
-          </button>
-        </div>
-
-      </div>
-    </div>
-  );
-
   return (
     <>
       <button
-        ref={buttonRef}
         {...props}
         type="button"
         className={`inline-flex items-center gap-1.5 transition-colors duration-200 ${
@@ -115,7 +66,15 @@ export function DeleteButton({ id, type, entityName = 'este elemento', className
         {children || 'Eliminar'}
       </button>
 
-      {mounted && typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null}
+      <ConfirmDialog
+        open={isOpen}
+        title="¿Estás seguro?"
+        description={<>Vas a eliminar <strong className="text-gray-900">{entityName}</strong>. Esta acción no se puede deshacer.</>}
+        confirmLabel="Eliminar"
+        busy={isDeleting}
+        onCancel={() => setIsOpen(false)}
+        onConfirm={handleDelete}
+      />
     </>
   );
 }

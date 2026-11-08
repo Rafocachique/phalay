@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 declare global {
   interface Window {
@@ -34,6 +34,9 @@ export type CheckoutProfile = {
 };
 
 export default function CheckoutClient({ profile }: { profile: CheckoutProfile }) {
+  // Se conserva durante reintentos: una doble pulsación o un timeout no debe
+  // crear dos pedidos ni dos cobros para la misma compra.
+  const checkoutAttemptRef = useRef<string | null>(null);
   const { items, clearCart } = useCartStore();
   const [step, setStep] = useState<'auth' | 'shipping' | 'confirm' | 'done'>('auth');
   const [loading, setLoading] = useState(false);
@@ -95,11 +98,14 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
   }, []);
 
   const getApiBaseUrl = () => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-      return `http://${hostname}:3000/api/v1`;
-    }
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  };
+
+  const getCheckoutAttemptId = () => {
+    if (!checkoutAttemptRef.current) {
+      checkoutAttemptRef.current = crypto.randomUUID();
+    }
+    return checkoutAttemptRef.current;
   };
 
   useEffect(() => {
@@ -135,7 +141,8 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
         setForm(f => (f.paymentMethod ? f : { ...f, paymentMethod: first }));
       })
       .catch(() => {
-        // Si no se puede leer la config, se asume el default seguro (sólo Culqi)
+        // Si no se puede leer la configuración, se conserva el comportamiento
+        // histórico; la API sigue validando que el método esté habilitado.
         setForm(f => (f.paymentMethod ? f : { ...f, paymentMethod: 'tarjeta' }));
       });
   }, []);
@@ -246,6 +253,7 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
         notes: form.notes,
         culqiToken,
         culqiOrderId,
+        checkoutIdempotencyKey: getCheckoutAttemptId(),
         items: items.map(item => ({
           productId: item.id,
           variantId: item.variantId || null,
@@ -270,6 +278,9 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
+        // El servidor respondió de forma concluyente; el siguiente intento
+        // requiere una nueva sesión de pago de Culqi.
+        checkoutAttemptRef.current = null;
         setError(errorData.message || 'Error al procesar el pedido.');
         setLoading(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });

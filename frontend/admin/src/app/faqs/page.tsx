@@ -3,12 +3,15 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Info, Plus, Trash2 } from 'lucide-react';
 import { getFaqs, createFaq, deleteFaq } from '@/app/actions/faqs';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function FaqsPage() {
   const [faqs, setFaqs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingFaq, setIsAddingFaq] = useState(false);
   const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
+  const [faqToDelete, setFaqToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     getFaqs()
@@ -33,8 +36,10 @@ export default function FaqsPage() {
   };
 
   const handleDeleteFaq = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar esta pregunta?')) return;
+    setDeleting(true);
     const result = await deleteFaq(id);
+    setDeleting(false);
+    setFaqToDelete(null);
     if ('success' in result && result.success) {
       setFaqs(faqs.filter(f => f.id !== id));
       toast.success('Pregunta eliminada');
@@ -115,7 +120,7 @@ export default function FaqsPage() {
                   <p className="text-gray-600 text-sm whitespace-pre-wrap">{faq.answer}</p>
                 </div>
                 <button 
-                  onClick={() => handleDeleteFaq(faq.id)} 
+                  onClick={() => setFaqToDelete(faq.id)}
                   className="text-gray-400 hover:text-red-500 transition-colors p-2"
                   title="Eliminar"
                 >
@@ -126,6 +131,15 @@ export default function FaqsPage() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={Boolean(faqToDelete)}
+        title="¿Eliminar esta pregunta?"
+        description="La pregunta frecuente dejará de mostrarse en la tienda."
+        confirmLabel="Eliminar pregunta"
+        busy={deleting}
+        onCancel={() => setFaqToDelete(null)}
+        onConfirm={() => faqToDelete && handleDeleteFaq(faqToDelete)}
+      />
     </div>
   );
 }
