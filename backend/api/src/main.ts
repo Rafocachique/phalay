@@ -16,7 +16,9 @@ async function bootstrap() {
   });
 
   // ── Aumento del tamaño de payload ──
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '10mb', verify: (request, _response, buffer) => {
+    (request as express.Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+  } }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   // ── Seguridad ──

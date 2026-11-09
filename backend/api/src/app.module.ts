@@ -20,6 +20,7 @@ import { ShippingModule } from './modules/shipping/shipping.module';
 import { ClaimsModule } from './modules/claims/claims.module';
 import { NewsletterModule } from './modules/newsletter/newsletter.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     ClaimsModule,
     NewsletterModule,
     ChatbotModule,
+    WhatsappModule,
   ],
   providers: [
     {

@@ -195,6 +195,7 @@ export default function AdminShell({
         { name: 'Ajustes Generales', href: '/settings', icon: <Settings size={16} strokeWidth={2.5} /> },
         { name: 'Preguntas Frecuentes', href: '/faqs', icon: <Info size={16} strokeWidth={2.5} /> },
         { name: 'Probar asistente', href: '/chatbot', icon: <Info size={16} strokeWidth={2.5} /> },
+        { name: 'WhatsApp', href: '/whatsapp', icon: <Info size={16} strokeWidth={2.5} /> },
         { name: 'Textos Legales', href: '/legal', icon: <Scale size={16} strokeWidth={2.5} /> },
         { name: 'Libro de Reclamaciones', href: '/reclamaciones', icon: <FileText size={16} strokeWidth={2.5} /> },
       ],

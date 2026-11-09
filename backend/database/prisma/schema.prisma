@@ -497,6 +497,41 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// Tablas de la bandeja de WhatsApp. Su SQL y RLS están en backend/database/whatsapp.sql.
+model WhatsappConversation {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phoneNumberId  String @map("phone_number_id")
+  customerWaId   String @map("customer_wa_id")
+  mode           String @default("BOT")
+  assignedTo     String? @map("assigned_to")
+  lastCustomerAt DateTime @map("last_customer_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  busyUntil      DateTime @default(dbgenerated("'epoch'::timestamp with time zone")) @map("busy_until") @db.Timestamptz
+  leaseToken     String? @map("lease_token") @db.Uuid
+  messages       WhatsappMessage[]
+
+  @@unique([phoneNumberId, customerWaId])
+  @@map("wa_conversations")
+}
+
+model WhatsappMessage {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String @map("conversation_id") @db.Uuid
+  externalId     String? @unique @map("external_id")
+  replyToId      String? @unique @map("reply_to") @db.Uuid
+  direction      String
+  body           String
+  state          String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  conversation   WhatsappConversation @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replyTo        WhatsappMessage? @relation("WhatsappReply", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reply          WhatsappMessage? @relation("WhatsappReply")
+
+  @@index([state, createdAt], map: "wa_messages_queue_idx")
+  @@index([conversationId, createdAt], map: "wa_messages_conversation_idx")
+  @@map("wa_messages")
+}
+
 enum UserRole {
   CUSTOMER
   ADMIN

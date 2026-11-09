@@ -112,7 +112,9 @@ no una probabilidad de veracidad. El umbral inicial necesita evaluación con con
 El motor es TF-IDF léxico con normalización y algunos sinónimos españoles, no un LLM.
 Preguntas complejas, errores ortográficos y contexto entre mensajes pueden requerir un vendedor.
 
-`handoff` **solicita** derivación: todavía no asigna vendedor ni guarda una conversación.
+En el motor Python aislado, `handoff` **solicita** derivación: no asigna vendedor ni guarda una conversación.
+La integración WhatsApp y la bandeja se implementan por separado en NestJS; ver
+`../api/WHATSAPP.md` para su configuración, tablas y activación pendientes.
 `human_active` lo debe establecer el backend del canal a partir de estado persistido, nunca
 confiando en un cliente público. Este prototipo es sin estado y no conserva mensajes ni datos
 personales. No conecta aún WhatsApp, consulta stock en vivo ni atiende pedidos privados.
