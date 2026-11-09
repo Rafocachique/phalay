@@ -43,10 +43,18 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
     console.error("Error fetching categories:", error);
   }
 
-  // Parse category list from query parameter
-  const selectedCategories = categoryName 
+  // Aceptamos enlaces antiguos por ID, y enlaces legibles por slug o nombre.
+  // Así nunca se muestra un UUID a la clienta y los enlaces ya compartidos siguen funcionando.
+  const selectedCategoryTokens = categoryName
     ? categoryName.split(',').filter(Boolean)
     : [];
+  const resolveCategory = (token: string) => categories.find((category: any) => {
+    const normalizedToken = token.toLowerCase();
+    return category.id?.toLowerCase() === normalizedToken ||
+      category.slug?.toLowerCase() === normalizedToken ||
+      category.name?.toLowerCase() === normalizedToken;
+  });
+  const selectedCategories = selectedCategoryTokens.map((token) => resolveCategory(token)?.name || token);
 
   const productPrices = products.map((p: any) => parseFloat(p.price)).filter(p => !isNaN(p));
   // Margen de 10 soles al mínimo (mínimo 0) y 20 soles al máximo para mejorar la usabilidad del slider
@@ -100,9 +108,10 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
   }
 
   // 2. Filter by category (handles multiple selected categories)
-  if (selectedCategories.length > 0) {
-    const lowerSelected = selectedCategories.map(c => c.toLowerCase());
+  if (selectedCategoryTokens.length > 0) {
+    const lowerSelected = selectedCategoryTokens.map(c => c.toLowerCase());
     displayProducts = displayProducts.filter((p: any) => 
+      (p.category?.id && lowerSelected.includes(p.category.id.toLowerCase())) ||
       (p.category?.name && lowerSelected.includes(p.category.name.toLowerCase())) ||
       (p.category?.slug && lowerSelected.includes(p.category.slug.toLowerCase()))
     );
@@ -170,8 +179,8 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
   };
 
   // Helper to build URL removing just ONE category from the selected list
-  const getCategoryBadgeLink = (catName: string) => {
-    const remainingCats = selectedCategories.filter(c => c.toLowerCase() !== catName.toLowerCase());
+  const getCategoryBadgeLink = (categoryToken: string) => {
+    const remainingCats = selectedCategoryTokens.filter(c => c.toLowerCase() !== categoryToken.toLowerCase());
     const nextCatQuery = remainingCats.length > 0 ? `categoria=${encodeURIComponent(remainingCats.join(','))}` : '';
     
     const queryParts = [];
@@ -187,7 +196,7 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
     return queryParts.length > 0 ? `/catalogo?${queryParts.join('&')}` : '/catalogo';
   };
 
-  const hasActiveFilters = collectionId || selectedCategories.length > 0 || sizeFilter || colorFilter || audienceFilter || (params.maxPrice && parseFloat(params.maxPrice) < maxAvailablePrice) || searchQuery;
+  const hasActiveFilters = collectionId || selectedCategoryTokens.length > 0 || sizeFilter || colorFilter || audienceFilter || (params.maxPrice && parseFloat(params.maxPrice) < maxAvailablePrice) || searchQuery;
 
   // Build a nice heading title depending on active selections
   const getPageHeading = () => {
@@ -244,10 +253,10 @@ export default async function CatalogoPage({ searchParams }: PageProps) {
               )}
 
               {/* Render a separate badge for EACH selected category */}
-              {selectedCategories.map((catName) => (
-                <span key={catName} className="inline-flex items-center gap-2 bg-[#FBEFEF] text-[#8B5A5A] px-4 py-1.5 rounded-full text-xs font-bold border border-[#8B5A5A]/10 shadow-sm">
-                  Catálogo: {catName}
-                  <Link href={getCategoryBadgeLink(catName)} className="hover:bg-red-200 hover:text-red-800 bg-white/50 text-[#8B5A5A] w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black transition-colors">&times;</Link>
+              {selectedCategoryTokens.map((categoryToken, index) => (
+                <span key={categoryToken} className="inline-flex items-center gap-2 bg-[#FBEFEF] text-[#8B5A5A] px-4 py-1.5 rounded-full text-xs font-bold border border-[#8B5A5A]/10 shadow-sm">
+                  Catálogo: {selectedCategories[index]}
+                  <Link href={getCategoryBadgeLink(categoryToken)} className="hover:bg-red-200 hover:text-red-800 bg-white/50 text-[#8B5A5A] w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black transition-colors">&times;</Link>
                 </span>
               ))}
 

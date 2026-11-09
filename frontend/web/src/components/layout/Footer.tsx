@@ -14,16 +14,9 @@ interface FooterProps {
     tiktok?: string;
     whatsapp?: string;
   };
-  initialLegalInfo?: {
-    legalName?: string;
-    businessRuc?: string;
-    businessAddress?: string;
-    contactEmail?: string;
-    contactPhone?: string;
-  };
 }
 
-export function Footer({ initialStoreName, initialDescription, initialSocialLinks, initialLegalInfo }: FooterProps = {}) {
+export function Footer({ initialStoreName, initialDescription, initialSocialLinks }: FooterProps = {}) {
   const params = useParams();
   const locale = params?.locale || 'es';
   
@@ -157,13 +150,6 @@ export function Footer({ initialStoreName, initialDescription, initialSocialLink
             <Link href={`/${locale}/legal/terminos`} className="hover:text-[#8B5A5A] transition-colors">Términos y Condiciones</Link>
           </div>
         </div>
-        {(initialLegalInfo?.legalName || initialLegalInfo?.businessRuc || initialLegalInfo?.contactEmail) && (
-          <p className="mt-5 text-center text-xs leading-5 text-gray-500">
-            {initialLegalInfo.legalName && <span>{initialLegalInfo.legalName}</span>}
-            {initialLegalInfo.businessRuc && <span>{initialLegalInfo.legalName ? ' · ' : ''}RUC {initialLegalInfo.businessRuc}</span>}
-            {initialLegalInfo.contactEmail && <span>{(initialLegalInfo.legalName || initialLegalInfo.businessRuc) ? ' · ' : ''}{initialLegalInfo.contactEmail}</span>}
-          </p>
-        )}
       </div>
     </footer>
   );

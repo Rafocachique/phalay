@@ -35,6 +35,7 @@ export default async function CheckoutPage({
     name: [meta.first_name, meta.last_name].filter(Boolean).join(' ') || meta.full_name || '',
     dni: '',
     phone: '',
+    address: '',
   };
   let emailVerified = false;
 
@@ -53,6 +54,7 @@ export default async function CheckoutPage({
         profile.email = dbProfile.email || profile.email;
         profile.dni = dbProfile.dni || '';
         profile.phone = dbProfile.phone || '';
+        profile.address = dbProfile.defaultAddress?.street || '';
         emailVerified = dbProfile.emailVerified === true;
       }
     }

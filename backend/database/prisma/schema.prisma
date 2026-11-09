@@ -187,6 +187,7 @@ model ShippingAddress {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, isDefault])
   @@map("shipping_addresses")
 }
 
@@ -330,6 +331,8 @@ model Order {
   notes              String?
   trackingNumber     String?         @map("tracking_number")
   trackingUrl        String?         @map("tracking_url")
+  shippingProofUrl   String?         @map("shipping_proof_url")
+  shippingReceiptNumber String?      @map("shipping_receipt_number")
   estimatedDelivery  DateTime?       @map("estimated_delivery")
   deliveredAt        DateTime?       @map("delivered_at")
   cancelledAt        DateTime?       @map("cancelled_at")

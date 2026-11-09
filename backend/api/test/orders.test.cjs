@@ -34,7 +34,11 @@ function fixture() {
   const db = {
     systemSettings: { findFirst: async () => ({ paymentManualEnabled: true }) },
     user: { findUnique: async () => ({ id: 'user', firstName: 'Cliente', lastName: 'Uno', dni: body.dni, phone: body.phone, emailVerified: true }) },
-    shippingAddress: { create: async () => ({ id: 'address' }) },
+    shippingAddress: {
+      findFirst: async () => null,
+      updateMany: async () => ({ count: 0 }),
+      create: async () => ({ id: 'address' }),
+    },
     $transaction: async (fn) => fn(tx),
     order: {
       findUnique: async ({ where }) =>

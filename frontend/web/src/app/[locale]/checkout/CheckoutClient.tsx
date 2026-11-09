@@ -32,6 +32,7 @@ export type CheckoutProfile = {
   name: string;
   dni: string;
   phone: string;
+  address: string;
 };
 
 export default function CheckoutClient({ profile }: { profile: CheckoutProfile }) {
@@ -69,7 +70,7 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
     email: profile.email,
     name: profile.name,
     dni: profile.dni,
-    address: '',
+    address: profile.address,
     // El destino se elige en dos pasos: primero la zona (Lima o Provincia),
     // luego el destino puntual dentro de esa zona. Antes era un único combo
     // gigante con todos los distritos y agencias mezclados.
@@ -125,8 +126,13 @@ export default function CheckoutClient({ profile }: { profile: CheckoutProfile }
 
   // Cargar qué métodos de pago están activos en la tienda
   useEffect(() => {
-    fetch(`${getApiBaseUrl()}/stores`)
-      .then(res => res.json())
+    const loadCheckoutSettings = async () => {
+      const headers = await getAuthenticatedHeaders();
+      const response = await fetch(`${getApiBaseUrl()}/stores/checkout`, { headers, cache: 'no-store' });
+      if (!response.ok) throw new Error('No se pudo leer la configuración de pago.');
+      return response.json();
+    };
+    loadCheckoutSettings()
       .then(data => {
         const config = {
           paymentCardEnabled: data?.paymentCardEnabled ?? true,

@@ -99,7 +99,7 @@ export default function ProductosList({ initialProducts }: { initialProducts: an
                     <div className="flex items-center gap-2">
                       <p className="font-bold text-gray-900">{prod.name}</p>
                       {prod.featured && (
-                        <span className="bg-amber-100 text-amber-800 text-[10px] font-black uppercase px-2 py-0.5 rounded">Destacado</span>
+                        <span className="bg-amber-100 text-amber-800 text-[10px] font-black uppercase px-2 py-0.5 rounded">Nueva colección</span>
                       )}
                     </div>
                     <p className="text-sm text-gray-500 truncate max-w-xs">{prod.sku || 'Sin SKU'}</p>

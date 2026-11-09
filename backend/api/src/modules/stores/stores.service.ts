@@ -37,37 +37,63 @@ export class StoresService {
   async getStore() {
     const settings = await this.getOrCreateSettings();
     const socialLinks: any = typeof settings.socialLinks === 'object' && settings.socialLinks !== null ? settings.socialLinks : {};
-
-    const manualPayment = settings.paymentManualEnabled
-      ? {
-          yapeQrUrl: settings.yapeQrUrl,
-          whatsappNumber: settings.whatsappNumber,
-          manualPaymentInfo: settings.manualPaymentInfo,
-        }
-      : {};
-
+    // /stores se consulta desde cualquier navegador. Sólo puede contener
+    // información que ya se muestra en la portada; no datos de contacto,
+    // legales, pagos ni identificadores internos.
+    const publicSocialLinks = {
+      instagram: typeof socialLinks.instagram === 'string' ? socialLinks.instagram : '',
+      facebook: typeof socialLinks.facebook === 'string' ? socialLinks.facebook : '',
+      tiktok: typeof socialLinks.tiktok === 'string' ? socialLinks.tiktok : '',
+      whatsapp: typeof socialLinks.whatsapp === 'string' ? socialLinks.whatsapp : '',
+    };
+    const sourceBranding = socialLinks.branding && typeof socialLinks.branding === 'object' ? socialLinks.branding : {};
+    const branding = {
+      heroTitle: typeof sourceBranding.heroTitle === 'string' ? sourceBranding.heroTitle : undefined,
+      heroSubtitle: typeof sourceBranding.heroSubtitle === 'string' ? sourceBranding.heroSubtitle : undefined,
+      heroTextPosition: typeof sourceBranding.heroTextPosition === 'string' ? sourceBranding.heroTextPosition : undefined,
+      heroTextColor: typeof sourceBranding.heroTextColor === 'string' ? sourceBranding.heroTextColor : undefined,
+      heroTextShadow: typeof sourceBranding.heroTextShadow === 'string' ? sourceBranding.heroTextShadow : undefined,
+      heroFontStyle: typeof sourceBranding.heroFontStyle === 'string' ? sourceBranding.heroFontStyle : undefined,
+      heroOverlayOpacity: typeof sourceBranding.heroOverlayOpacity === 'number' ? sourceBranding.heroOverlayOpacity : undefined,
+    };
     return {
-      id: settings.id,
       storeName: settings.storeName,
       storeDescription: settings.storeDescription,
       logoUrl: settings.logoUrl,
       bannerUrl: settings.bannerUrl,
-      contactEmail: settings.contactEmail,
-      contactPhone: settings.contactPhone,
-      legalName: settings.legalName,
-      businessRuc: settings.businessRuc,
-      businessAddress: settings.businessAddress,
-      legalPrivacyContent: settings.legalPrivacyContent,
-      legalTermsContent: settings.legalTermsContent,
-      socialLinks,
-      branding: socialLinks.branding || {},
-      // Métodos de pago disponibles y lo que la clienta necesita para pagar
+      socialLinks: publicSocialLinks,
+      branding,
+    };
+  }
+
+  /** Configuración de pago mínima para una sesión autenticada. */
+  async getCheckoutSettings() {
+    const settings = await this.getOrCreateSettings();
+    return {
       paymentCardEnabled: settings.paymentCardEnabled,
       paymentYapeEnabled: settings.paymentYapeEnabled,
       paymentManualEnabled: settings.paymentManualEnabled,
-      // El QR y teléfono sólo son necesarios mientras el pago manual está
-      // habilitado. Ocultarlos cuando está apagado reduce exposición inútil.
-      ...manualPayment,
+      // Un QR y el destino de WhatsApp se muestran a la persona que eligió
+      // pago manual; no son claves ni otorgan acceso a la cuenta bancaria.
+      ...(settings.paymentManualEnabled ? {
+        yapeQrUrl: settings.yapeQrUrl,
+        whatsappNumber: settings.whatsappNumber,
+        manualPaymentInfo: settings.manualPaymentInfo,
+      } : {}),
+    };
+  }
+
+  /** Información legal que debe poder leer cualquier visitante. */
+  async getLegalDocuments() {
+    const settings = await this.getOrCreateSettings();
+    return {
+      storeName: settings.storeName,
+      legalName: settings.legalName,
+      businessRuc: settings.businessRuc,
+      businessAddress: settings.businessAddress,
+      contactEmail: settings.contactEmail,
+      legalPrivacyContent: settings.legalPrivacyContent,
+      legalTermsContent: settings.legalTermsContent,
     };
   }
 

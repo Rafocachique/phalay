@@ -114,6 +114,19 @@ export class OrdersController {
     return this.ordersService.updateStatus(id, status);
   }
 
+  @Patch(':id/shipping-proof')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(['SELLER', 'ADMIN', 'SUPER_ADMIN'])
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Registrar constancia o boleta del despacho' })
+  async updateShippingProof(
+    @Param('id') id: string,
+    @Body('proofUrl') proofUrl: string | undefined,
+    @Body('receiptNumber') receiptNumber: string | undefined,
+  ) {
+    return this.ordersService.updateShippingProof(id, proofUrl, receiptNumber);
+  }
+
   @Delete(':id')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles(['ADMIN', 'SUPER_ADMIN'])

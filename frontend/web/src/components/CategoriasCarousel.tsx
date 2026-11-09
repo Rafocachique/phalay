@@ -99,7 +99,7 @@ export default function CategoriasCarousel({ initialCategories = [] }: Categoria
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full">
         {categories.map((cat: any) => (
           <Link 
-            href={`/${locale}/catalogo?categoria=${cat.id}`} 
+            href={`/${locale}/catalogo?categoria=${encodeURIComponent(cat.slug || cat.name)}`}
             key={cat.id}
             className="group relative block aspect-[3/4] overflow-hidden transition-all duration-500 bg-gray-50 border border-gray-100 rounded-none"
           >

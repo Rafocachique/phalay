@@ -4,7 +4,7 @@ import { LegalDocument } from '@/components/legal/LegalDocument';
 export const dynamic = 'force-dynamic';
 
 export default async function PrivacidadPage() {
-  const store = await fetchPublicApi<Record<string, any> | null>('/stores', null);
+  const store = await fetchPublicApi<Record<string, any> | null>('/stores/legal', null);
   return (
     <div className="min-h-screen bg-[#F8F8F8] pb-20 pt-24">
       <div className="mx-auto max-w-3xl animate-enter px-6">

@@ -538,16 +538,16 @@ export default function EnviosPage() {
                 </div>
 
                 {req.status === 'PENDING' && (
-                  <div className="flex lg:flex-col gap-2 lg:w-56 flex-shrink-0">
+                  <div className="flex flex-row gap-2 self-start lg:w-48 lg:flex-col lg:self-center">
                     <button
                       onClick={() => handleConfigureFromRequest(req)}
-                      className="flex-1 bg-[#8B5A5A] hover:bg-[#7A4A4A] text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
+                      className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-[#8B5A5A] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#7A4A4A]"
                     >
                       <Plus size={16} /> Configurar precio
                     </button>
                     <button
                       onClick={() => handleResolveRequest(req.id)}
-                      className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                      className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-gray-50 px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100"
                       title="Descartar sin crear el destino (por ejemplo, si no hay cobertura)"
                     >
                       <CheckCircle2 size={16} /> Descartar

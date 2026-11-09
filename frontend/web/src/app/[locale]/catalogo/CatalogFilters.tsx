@@ -89,12 +89,16 @@ export default function CatalogFilters({
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  const handleCategoryToggle = (categoryName: string) => {
+  const handleCategoryToggle = (category: Category) => {
+    const categoryToken = category.slug || category.name;
+    const categoryValues = [category.id, category.slug, category.name]
+      .filter(Boolean)
+      .map((value) => value.toLowerCase());
     let nextCategories = [...selectedCategories];
-    if (nextCategories.includes(categoryName)) {
-      nextCategories = nextCategories.filter(c => c !== categoryName);
+    if (nextCategories.some((selected) => categoryValues.includes(selected.toLowerCase()))) {
+      nextCategories = nextCategories.filter((selected) => !categoryValues.includes(selected.toLowerCase()));
     } else {
-      nextCategories.push(categoryName);
+      nextCategories.push(categoryToken);
     }
     updateQueryParam({ categoria: nextCategories.length > 0 ? nextCategories.join(',') : null });
   };
@@ -134,7 +138,14 @@ export default function CatalogFilters({
   // Label text for category selector dropdown
   const getDropdownLabel = () => {
     if (selectedCategories.length === 0) return 'Todos los Catálogos';
-    if (selectedCategories.length === 1) return selectedCategories[0];
+    if (selectedCategories.length === 1) {
+      const selected = selectedCategories[0].toLowerCase();
+      return categories.find((category) =>
+        category.id.toLowerCase() === selected ||
+        category.slug?.toLowerCase() === selected ||
+        category.name.toLowerCase() === selected,
+      )?.name || selectedCategories[0];
+    }
     return `${selectedCategories.length} seleccionados`;
   };
 
@@ -165,7 +176,12 @@ export default function CatalogFilters({
                 Limpiar Selección
               </button>
               {categories.map((cat) => {
-                const isChecked = selectedCategories.includes(cat.name);
+                const categoryToken = cat.slug || cat.name;
+                const isChecked = selectedCategories.some((selected) =>
+                  selected.toLowerCase() === categoryToken.toLowerCase() ||
+                  selected.toLowerCase() === cat.id.toLowerCase() ||
+                  selected.toLowerCase() === cat.name.toLowerCase(),
+                );
                 return (
                   <label
                     key={cat.id}
@@ -174,7 +190,7 @@ export default function CatalogFilters({
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      onChange={() => handleCategoryToggle(cat.name)}
+                      onChange={() => handleCategoryToggle(cat)}
                       className="rounded border-gray-300 text-[#8B5A5A] focus:ring-[#8B5A5A] w-4 h-4 cursor-pointer"
                     />
                     <span className={`transition-colors ${isChecked ? 'text-[#8B5A5A] font-bold' : ''}`}>

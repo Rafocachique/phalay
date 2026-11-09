@@ -74,13 +74,6 @@ export default async function RootLayout({
             initialStoreName={storeName}
             initialDescription={storeDescription}
             initialSocialLinks={socialLinks}
-            initialLegalInfo={{
-              legalName: store?.legalName,
-              businessRuc: store?.businessRuc,
-              businessAddress: store?.businessAddress,
-              contactEmail: store?.contactEmail,
-              contactPhone: store?.contactPhone,
-            }}
           />
         </NextIntlClientProvider>
       </body>

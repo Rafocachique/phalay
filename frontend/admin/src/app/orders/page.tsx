@@ -3,6 +3,7 @@ import PaymentReview from '@/components/PaymentReview';
 import { Package, User, ShoppingBag, MapPin, Calendar } from 'lucide-react';
 import { getAuthHeader } from '@/lib/auth-header';
 import { DeleteButton } from '@/components/DeleteButton';
+import ShippingDispatchProof from '@/components/ShippingDispatchProof';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -42,6 +43,8 @@ export default async function OrdersPage() {
               !order.isShippingPaid &&
               ['INITIATED', 'FAILED'].includes(shippingPayment.status),
             );
+            const shippingUnpaid = Number(order.shippingCost) > 0 && !order.isShippingPaid;
+            const amountToValidate = shippingUnpaid ? Number(order.subtotal) : Number(order.total);
             const formattedDate = new Date(order.createdAt).toLocaleDateString('es-PE', {
               day: 'numeric',
               month: 'long',
@@ -65,7 +68,7 @@ export default async function OrdersPage() {
 
                   <div className="flex items-center gap-4">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Estado del Pedido:</span>
-                    <OrderStatusSelect orderId={order.id} currentStatus={order.status} />
+                    <OrderStatusSelect orderId={order.id} orderNumber={order.orderNumber} currentStatus={order.status} />
                     <div className="ml-2 pl-2 border-l border-gray-200">
                       <DeleteButton
                         id={order.id}
@@ -87,8 +90,9 @@ export default async function OrdersPage() {
                     orderId={order.id}
                     paymentStatus={order.paymentStatus}
                     paymentMethod={order.paymentMethod}
-                    total={order.total}
+                    total={amountToValidate}
                     shippingPaymentPending={shippingPaymentPending}
+                    shippingUnpaid={shippingUnpaid}
                     shippingCost={order.shippingCost}
                   />
                 </div>
@@ -159,15 +163,26 @@ export default async function OrdersPage() {
                     <div className="border-t border-gray-100 pt-4 flex flex-wrap justify-between items-center gap-4 bg-gray-50/20 -mx-8 -mb-8 px-8 py-4">
                       <div className="flex gap-6 text-xs text-gray-500">
                         <div>Subtotal: <strong className="text-gray-700">S/ {parseFloat(order.subtotal).toFixed(2)}</strong></div>
-                        <div>Envío: <strong className="text-gray-700">S/ {parseFloat(order.shippingCost).toFixed(2)}</strong></div>
+                        <div>Envío: <strong className="text-gray-700">S/ {parseFloat(order.shippingCost).toFixed(2)}</strong>{shippingUnpaid && <span className="ml-1 font-semibold text-amber-700">pendiente</span>}</div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Recaudado:</span>
-                        <span className="text-lg font-black text-[#8B5A5A]">S/ {parseFloat(order.total).toFixed(2)}</span>
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{shippingUnpaid ? 'Monto de prendas:' : 'Total confirmado:'}</span>
+                        <span className="text-lg font-black text-[#8B5A5A]">S/ {amountToValidate.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {(order.status === 'SHIPPED' || order.status === 'DELIVERED') && (
+                  <ShippingDispatchProof
+                    orderId={order.id}
+                    orderNumber={order.orderNumber}
+                    destinationType={order.destination?.type}
+                    destinationLabel={order.destination?.agencyName || order.destination?.district || order.destination?.department}
+                    proofUrl={order.shippingProofUrl}
+                    receiptNumber={order.shippingReceiptNumber}
+                  />
+                )}
               </div>
             );
           })}

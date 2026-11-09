@@ -242,6 +242,14 @@ export default function EditarProductoForm({
                   <p className="text-[10px] text-gray-400 mt-1">Se calcula automáticamente sumando las variantes.</p>
                 </div>
               </div>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#8B5A5A]/20 bg-[#FBEFEF]/60 p-4 transition-colors hover:bg-[#FBEFEF]">
+                <input name="featured" type="checkbox" defaultChecked={Boolean(product.featured)} className="mt-1 h-4 w-4 rounded border-gray-300 text-[#8B5A5A] focus:ring-[#8B5A5A]" />
+                <span>
+                  <span className="block text-sm font-bold text-gray-900">Mostrar en Nueva colección</span>
+                  <span className="mt-1 block text-xs text-gray-500">Controla si esta prenda aparece en la selección principal. Máximo 8 productos destacados.</span>
+                </span>
+              </label>
             </div>
 
             {/* Variantes (Tallas y Colores Estilizados y TOTALMENTE INTERACTIVOS) */}

@@ -55,6 +55,26 @@ export async function updateOrderStatus(orderId: string, status: string) {
   return { success: true };
 }
 
+export async function updateShippingProof(orderId: string, proofUrl: string, receiptNumber: string) {
+  try {
+    const authHeaders = await getAuthHeader();
+    const res = await fetch(`${API_BASE_URL}/orders/${orderId}/shipping-proof`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify({ proofUrl, receiptNumber }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { error: err.message || 'No se pudo guardar la constancia de despacho' };
+    }
+  } catch {
+    return { error: 'Error de conexión' };
+  }
+
+  revalidatePath('/orders');
+  return { success: true };
+}
+
 export async function deleteOrder(orderId: string) {
   try {
     const authHeaders = await getAuthHeader();

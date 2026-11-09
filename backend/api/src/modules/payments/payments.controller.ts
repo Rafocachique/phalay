@@ -43,6 +43,9 @@ export class PaymentsController {
     if (!dto.email) {
       throw new BadRequestException('El correo es obligatorio para generar la orden de pago.');
     }
+    if (!/^\d{9}$/.test(String(dto.phone || ''))) {
+      throw new BadRequestException('Ingresa un teléfono válido de 9 dígitos para continuar con el pago.');
+    }
     if (dto.email.trim().toLowerCase() !== user.email.toLowerCase()) {
       throw new UnauthorizedException('El correo del pago debe coincidir con tu sesión.');
     }
@@ -61,7 +64,7 @@ export class PaymentsController {
         first_name: dto.name || 'Cliente',
         last_name: 'Phalay',
         email: dto.email,
-        phone_number: dto.phone || '999999999',
+        phone_number: dto.phone,
       },
       expiration_date: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 horas
     });

@@ -127,7 +127,10 @@ export default function MisPedidosPage() {
           method: 'POST',
           headers: { Authorization: `Bearer ${data.session.access_token}` },
         }),
-        fetch(`${apiBaseUrl}/stores`, { cache: 'no-store' }),
+        fetch(`${apiBaseUrl}/stores/checkout`, {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+          cache: 'no-store',
+        }),
       ]);
       const paymentData = await paymentResponse.json().catch(() => ({}));
       if (!paymentResponse.ok) throw new Error(paymentData.message || 'No pudimos preparar el pago de envío.');
@@ -281,6 +284,8 @@ export default function MisPedidosPage() {
               const shippingAwaitingProductPayment = order.paymentStatus !== 'COMPLETED' && shippingQuoted;
               const shippingAwaitingQuote = !order.shippingDestinationId
                 && order.missingRequests?.some((request: any) => request.status === 'PENDING');
+              const shippingUnpaid = Number(order.shippingCost) > 0 && !order.isShippingPaid;
+              const displayedOrderAmount = shippingUnpaid ? Number(order.subtotal) : Number(order.total);
               const paymentPanelOpen = shippingPaymentOrderId === order.id && shippingPaymentConfig;
 
               return (
@@ -290,25 +295,25 @@ export default function MisPedidosPage() {
                     <div>
                       <div className="flex items-center gap-3 mb-1.5">
                         <h2 className="font-mono font-bold text-gray-900 text-sm tracking-wider">{order.orderNumber}</h2>
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${statusInfo.color}`}>
+                        <span className={`inline-flex items-center gap-1.5 rounded-lg border border-current/10 px-2.5 py-1 text-[11px] font-semibold ${statusInfo.color}`}>
                           {statusInfo.icon} {statusInfo.label}
                         </span>
                         {/* Estado del pago: es lo que la clienta necesita ver
                             tras enviar su captura de Yape. */}
                         {paymentInfo && (
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${paymentInfo.color}`}>
+                          <span className={`inline-flex items-center gap-1.5 rounded-lg border border-current/10 px-2.5 py-1 text-[11px] font-semibold ${paymentInfo.color}`}>
                             {order.paymentStatus === 'COMPLETED' ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
-                            {paymentInfo.label}
+                            {order.paymentStatus === 'COMPLETED' && shippingUnpaid ? 'Prendas pagadas' : paymentInfo.label}
                           </span>
                         )}
                         {order.address?.state && !order.address.state.toLowerCase().includes('lima') && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100">
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-orange-100 bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-orange-700">
                             <MapPin size={10} /> Provincia
                           </span>
                         )}
                       </div>
                       <p className="text-xs text-gray-400">
-                        Realizado el {formattedDate} · <strong className="text-gray-700">S/ {parseFloat(order.total).toFixed(2)}</strong>
+                        Realizado el {formattedDate} · <strong className="text-gray-700">{shippingUnpaid ? `Prendas: S/ ${displayedOrderAmount.toFixed(2)}` : `S/ ${displayedOrderAmount.toFixed(2)}`}</strong>
                       </p>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">

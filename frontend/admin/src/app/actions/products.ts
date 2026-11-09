@@ -16,6 +16,7 @@ export async function createProduct(formData: FormData) {
   const categoryId = formData.get('categoryId') as string;
   const collectionIdsJson = formData.get('collectionIds') as string;
   const variantsJson = formData.get('variants') as string;
+  const featured = formData.get('featured') === 'on';
 
   if (!name || !price || !sku) {
     return { error: 'Nombre, precio y SKU son requeridos.' };
@@ -33,6 +34,7 @@ export async function createProduct(formData: FormData) {
     sku,
     stock: stock ? parseInt(stock) : 10,
     status: 'ACTIVE',
+    featured,
     images: imageUrls,
     tags,
     categoryId: categoryId || undefined,
@@ -74,6 +76,7 @@ export async function updateProduct(id: string, formData: FormData) {
   const categoryId = formData.get('categoryId') as string;
   const collectionIdsJson = formData.get('collectionIds') as string;
   const variantsJson = formData.get('variants') as string;
+  const featured = formData.get('featured') === 'on';
 
   if (!name || !price || !sku) {
     return { error: 'Nombre, precio y SKU son requeridos.' };
@@ -95,6 +98,7 @@ export async function updateProduct(id: string, formData: FormData) {
     categoryId: categoryId || undefined,
     collectionIds,
     variants,
+    featured,
   };
 
   try {

@@ -1,0 +1,23 @@
+[
+  {
+    "id": "sobre-phalay",
+    "title": "Sobre PHALAY",
+    "questions": ["Qué es PHALAY", "Qué vende PHALAY", "Qué venden en su tienda"],
+    "answer": "PHALAY es una tienda de moda femenina. ¿Qué producto estás buscando?",
+    "enabled": true
+  },
+  {
+    "id": "catalogo",
+    "title": "Catálogo",
+    "questions": ["Envíame el catálogo", "Quiero ver sus productos", "Cuál es el enlace de su tienda"],
+    "answer": "REEMPLAZAR por el enlace público confirmado del catálogo antes de habilitar.",
+    "enabled": false
+  },
+  {
+    "id": "envios",
+    "title": "Envíos",
+    "questions": ["Hacen envíos a provincias", "Envían a Cusco", "Cuánto cuesta el envío"],
+    "answer": "REEMPLAZAR por la política real aprobada de envíos antes de habilitar.",
+    "enabled": false
+  }
+]

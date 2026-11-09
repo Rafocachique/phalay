@@ -73,7 +73,7 @@ export default function NovedadesCarousel({ initialProducts = [] }: NovedadesCar
           <h2 className="text-3xl font-serif font-medium tracking-widest text-gray-900 uppercase">
             NUESTRA SELECCIÓN
           </h2>
-          <p className="text-xs text-gray-400 font-semibold tracking-wider uppercase mt-2">Novedades exclusivas para ti</p>
+          <p className="text-xs text-gray-400 font-semibold tracking-wider uppercase mt-2">Novedades exclusivas para ti · Explora el catálogo para ver todas las prendas</p>
         </div>
 
         {/* 4 Column Grid stretching full width */}
@@ -84,13 +84,13 @@ export default function NovedadesCarousel({ initialProducts = [] }: NovedadesCar
               className="group flex flex-col transition-all duration-300 animate-enter"
             >
               {/* Product Portrait Image wrapper */}
-              <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 mb-4 cursor-pointer">
+              <div className="relative aspect-[3/4] overflow-hidden bg-[#f6f4f4] mb-4 cursor-pointer">
                 <Link href={`/${locale}/producto/${item.slug}`} className="block w-full h-full">
                   <img 
                     src={item.img} 
                     alt={item.title} 
                     draggable="false"
-                    className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-700 select-none" 
+                    className="w-full h-full object-contain group-hover:scale-[1.03] transition-transform duration-700 select-none"
                   />
                 </Link>
 
@@ -139,6 +139,15 @@ export default function NovedadesCarousel({ initialProducts = [] }: NovedadesCar
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="mt-12 flex justify-center">
+          <Link
+            href={`/${locale}/catalogo`}
+            className="inline-flex items-center justify-center bg-[#8B5A5A] px-8 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-[#744949]"
+          >
+            Ver todo el catálogo
+          </Link>
         </div>
       </div>
       

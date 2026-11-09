@@ -1,20 +1,9 @@
 import AppearanceForm from './AppearanceForm';
 import { Image as ImageIcon } from 'lucide-react';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-
-async function getStore() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/stores`, { cache: 'no-store' });
-    if (!res.ok) return null;
-    return res.json();
-  } catch (error) {
-    return null;
-  }
-}
+import { getStoreSettings } from '@/app/actions/store';
 
 export default async function AppearancePage() {
-  const store = await getStore();
+  const store = await getStoreSettings();
   
   const defaultBanner = 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=1600&q=80';
   const defaultTitle = 'Elegancia Redefinida';

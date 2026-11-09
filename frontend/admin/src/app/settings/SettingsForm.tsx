@@ -2,9 +2,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Store, Instagram, Facebook, Mail, MapPin, MessageCircle, ReceiptText, Music2 } from 'lucide-react';
-import { updateStoreSettings } from '@/app/actions/store';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+import { getStoreSettings, updateStoreSettings } from '@/app/actions/store';
 
 function normalizeWhatsAppNumber(value: string) {
   const digits = value.replace(/\D/g, '');
@@ -36,9 +34,8 @@ export default function SettingsForm() {
 
   const fetchData = async () => {
     try {
-      const resStore = await fetch(`${API_BASE_URL}/stores?t=${Date.now()}`);
-      if (resStore.ok) {
-        const data = await resStore.json();
+      const data = await getStoreSettings();
+      if (data) {
         setSettings({
           storeName: data.storeName || 'PHALAY',
           storeDescription: data.storeDescription || '',

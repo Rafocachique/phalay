@@ -254,11 +254,45 @@ export class AuthService implements OnModuleInit {
     }
   }
 
-  /** Actualiza el nombre del propio usuario autenticado. Nunca toca rol ni estado. */
-  async updateOwnProfile(userId: string, data: { firstName: string; lastName: string }) {
+  /**
+   * Datos privados de la propia cuenta para el checkout. La dirección por
+   * defecto sirve para autocompletar una compra posterior; los domicilios ya
+   * asociados a pedidos no se modifican, así el historial queda intacto.
+   */
+  async getOwnProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        dni: true,
+        emailVerified: true,
+        addresses: {
+          where: { deletedAt: null, isDefault: true },
+          orderBy: { updatedAt: 'desc' },
+          take: 1,
+          select: { street: true, city: true, state: true, postalCode: true, country: true },
+        },
+      },
+    });
+    if (!user) throw new BadRequestException('No encontramos tu cuenta. Vuelve a iniciar sesión.');
+    const { addresses, ...profile } = user;
+    return { ...profile, defaultAddress: addresses[0] || null };
+  }
+
+  /** Actualiza el perfil propio. Nunca toca rol ni estado. */
+  async updateOwnProfile(userId: string, data: { firstName: string; lastName: string; phone?: string; dni?: string }) {
     const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { firstName: data.firstName, lastName: data.lastName },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        ...(data.phone ? { phone: data.phone } : {}),
+        ...(data.dni ? { dni: data.dni } : {}),
+      },
     });
 
     // Mantener sincronizado el metadata de Supabase para que el nombre no
@@ -271,7 +305,14 @@ export class AuthService implements OnModuleInit {
       this.logger.warn(`No se pudo sincronizar el nombre en Supabase: ${err.message}`);
     }
 
-    return { id: updated.id, firstName: updated.firstName, lastName: updated.lastName, email: updated.email };
+    return {
+      id: updated.id,
+      firstName: updated.firstName,
+      lastName: updated.lastName,
+      email: updated.email,
+      phone: updated.phone,
+      dni: updated.dni,
+    };
   }
 
   /**

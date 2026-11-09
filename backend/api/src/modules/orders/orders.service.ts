@@ -245,13 +245,14 @@ export class OrdersService {
       throw new BadRequestException('Verifica tu correo antes de realizar una compra.');
     }
 
-    // Completamos datos de contacto sin aceptar nunca un id de cliente desde
-    // el navegador. El rol y la cuenta siguen siendo los de la sesión.
-    const missing: { dni?: string; phone?: string } = {};
-    if (normalizedDni && !user.dni) missing.dni = normalizedDni;
-    if (phone && !user.phone) missing.phone = phone;
-    if (Object.keys(missing).length > 0) {
-      user = await this.prisma.user.update({ where: { id: user.id }, data: missing });
+    // Guardamos el contacto real digitado por la clienta. Antes sólo se
+    // completaban campos vacíos, por lo que un teléfono antiguo seguía
+    // apareciendo aun después de cambiarlo en checkout.
+    const profileChanges: { dni?: string; phone?: string } = {};
+    if (normalizedDni && normalizedDni !== user.dni) profileChanges.dni = normalizedDni;
+    if (phone && phone !== user.phone) profileChanges.phone = phone;
+    if (Object.keys(profileChanges).length > 0) {
+      user = await this.prisma.user.update({ where: { id: user.id }, data: profileChanges });
     }
 
     // 2. Resolver el destino elegido (el checkout no manda city/region sueltos,
@@ -271,21 +272,46 @@ export class OrdersService {
       ? destination.department || destination.province || (destination.type === 'LIMA_METROPOLITANA' ? 'Lima' : 'N/A')
       : missingDestinationName || 'Por confirmar';
 
-    // 3. Crear dirección de envío
-    const shippingAddress = await this.prisma.shippingAddress.create({
-      data: {
-        userId: user.id,
-        label: 'Checkout ' + new Date().toLocaleDateString(),
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone,
-        street: address,
-        city,
-        state: region,
-        postalCode: '15000',
-        country: 'PE',
-      },
+    // 3. Reutilizar la dirección principal si es idéntica. Si cambia, se crea
+    // un nuevo registro y el anterior se conserva como historial de pedidos.
+    // Nunca editamos una dirección vinculada a una orden pasada.
+    const addressData = {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: String(phone),
+      street: String(address).trim(),
+      city,
+      state: region,
+      postalCode: '15000',
+      country: 'PE',
+    };
+    const previousDefault = await this.prisma.shippingAddress.findFirst({
+      where: { userId: user.id, isDefault: true, deletedAt: null },
+      orderBy: { updatedAt: 'desc' },
     });
+    const isSameAddress = previousDefault &&
+      previousDefault.firstName === addressData.firstName &&
+      previousDefault.lastName === addressData.lastName &&
+      previousDefault.phone === addressData.phone &&
+      previousDefault.street === addressData.street &&
+      previousDefault.city === addressData.city &&
+      previousDefault.state === addressData.state &&
+      previousDefault.postalCode === addressData.postalCode &&
+      previousDefault.country === addressData.country;
+
+    let shippingAddress = previousDefault;
+    if (!isSameAddress) {
+      await this.prisma.shippingAddress.updateMany({
+        where: { userId: user.id, isDefault: true },
+        data: { isDefault: false },
+      });
+      shippingAddress = await this.prisma.shippingAddress.create({
+        data: { userId: user.id, label: 'Dirección principal', isDefault: true, ...addressData },
+      });
+    }
+    if (!shippingAddress) {
+      throw new BadRequestException('No se pudo guardar la dirección de entrega. Inténtalo nuevamente.');
+    }
 
 
 
@@ -504,7 +530,7 @@ export class OrdersService {
         address: true,
         payments: { select: { method: true, status: true, amount: true, metadata: true } },
         missingRequests: { select: { status: true } },
-        destination: { select: { district: true, department: true } },
+        destination: { select: { district: true, department: true, type: true, agencyName: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -695,6 +721,44 @@ export class OrdersService {
         },
       },
       include: { timeline: true },
+    });
+  }
+
+  /** Guarda la constancia visual y/o el número de boleta del despacho.
+   * Aplica por igual a delivery de Lima y a encomiendas de provincia. */
+  async updateShippingProof(id: string, proofUrl?: string, receiptNumber?: string) {
+    const order = await this.prisma.order.findUnique({ where: { id } });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+    if (order.status !== OrderStatus.SHIPPED && order.status !== OrderStatus.DELIVERED) {
+      throw new BadRequestException('Marca el pedido como enviado antes de registrar la constancia de despacho.');
+    }
+
+    const normalizedProofUrl = proofUrl?.trim() || null;
+    const normalizedReceiptNumber = receiptNumber?.trim() || null;
+    if (normalizedProofUrl && !/^https:\/\//i.test(normalizedProofUrl) && !/^data:image\/(png|jpe?g|webp|gif|avif);base64,/i.test(normalizedProofUrl)) {
+      throw new BadRequestException('La constancia debe ser una imagen segura subida por el panel.');
+    }
+    if (normalizedReceiptNumber && normalizedReceiptNumber.length > 120) {
+      throw new BadRequestException('El número de boleta o guía es demasiado largo.');
+    }
+
+    return this.prisma.order.update({
+      where: { id },
+      // El cliente de Prisma se regenera en el build de API; la conversión
+      // mantiene la compilación local funcional si el watcher retiene el DLL.
+      data: {
+        shippingProofUrl: normalizedProofUrl,
+        shippingReceiptNumber: normalizedReceiptNumber,
+        timeline: {
+          create: {
+            status: order.status,
+            description: normalizedProofUrl || normalizedReceiptNumber
+              ? 'Constancia de despacho registrada por el equipo.'
+              : 'Constancia de despacho eliminada por el equipo.',
+          },
+        },
+      } as any,
+      include: { timeline: { orderBy: { createdAt: 'asc' } } },
     });
   }
 

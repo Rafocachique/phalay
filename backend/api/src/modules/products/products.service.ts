@@ -98,6 +98,9 @@ export class ProductsService {
 
     try {
       const product = await this.prisma.$transaction(async (tx) => {
+        if (data.featured) {
+          await this.ensureFeaturedCapacity(tx);
+        }
         const created = await tx.product.create({
           data: {
             name: data.name.trim(),
@@ -107,6 +110,7 @@ export class ProductsService {
             slug,
             categoryId: data.categoryId || category.id,
             status: data.status || 'ACTIVE',
+            featured: Boolean(data.featured),
             tags: data.tags || [],
             images: imageUrls.length > 0 ? {
               create: imageUrls.map((url: string, index: number) => ({
@@ -215,6 +219,10 @@ export class ProductsService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        const currentProduct = await tx.product.findUnique({ where: { id }, select: { featured: true } });
+        if (data.featured === true && !currentProduct?.featured) {
+          await this.ensureFeaturedCapacity(tx, id);
+        }
         const updatedProduct = await tx.product.update({ where: { id }, data: updateData });
         if (data.tags === undefined && data.price === undefined && data.sku === undefined && stock === undefined && variants === undefined) return;
 
@@ -253,6 +261,20 @@ export class ProductsService {
       return this.findOne(id);
     } catch (error) {
       this.throwProductWriteError(error);
+    }
+  }
+
+  private async ensureFeaturedCapacity(tx: Prisma.TransactionClient, productId?: string) {
+    const featuredCount = await tx.product.count({
+      where: {
+        featured: true,
+        deletedAt: null,
+        status: 'ACTIVE',
+        ...(productId ? { id: { not: productId } } : {}),
+      },
+    });
+    if (featuredCount >= 8) {
+      throw new BadRequestException('Puedes destacar como máximo 8 productos en la Nueva colección. Quita uno antes de agregar otro.');
     }
   }
 

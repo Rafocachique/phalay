@@ -19,6 +19,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
 import { ClaimsModule } from './modules/claims/claims.module';
 import { NewsletterModule } from './modules/newsletter/newsletter.module';
+import { ChatbotModule } from './modules/chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { NewsletterModule } from './modules/newsletter/newsletter.module';
     ShippingModule,
     ClaimsModule,
     NewsletterModule,
+    ChatbotModule,
   ],
   providers: [
     {

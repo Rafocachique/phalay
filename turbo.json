@@ -20,7 +20,9 @@
     "CULQI_WEBHOOK_SECRET",
     "NEXT_PUBLIC_CULQI_PUBLIC_KEY",
     "RESEND_API_KEY",
-    "RESEND_FROM_EMAIL"
+    "RESEND_FROM_EMAIL",
+    "CHATBOT_SERVICE_URL",
+    "CHATBOT_API_KEY"
   ],
   "tasks": {
     "build": {

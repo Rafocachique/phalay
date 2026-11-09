@@ -2,6 +2,7 @@ import Link from 'next/link';
 import ColeccionesCarousel from '@/components/ColeccionesCarousel';
 import NovedadesCarousel from '@/components/NovedadesCarousel';
 import CategoriasCarousel from '@/components/CategoriasCarousel';
+import ProductDiscoveryCarousel from '@/components/ProductDiscoveryCarousel';
 import { fetchPublicApi } from '@/lib/public-api';
 
 // Forzar que esta página NUNCA se guarde en caché - siempre datos frescos de la BD
@@ -14,7 +15,10 @@ async function getStore() {
 
 async function getProducts() {
   const products = await fetchPublicApi<any[]>('/products', []);
-  return products.slice(0, 5);
+  const featured = products.filter((product) => product.featured).slice(0, 8);
+  // Mientras el administrador elige la primera selección, la portada conserva una
+  // muestra útil. En cuanto marque uno, sólo se mostrarán los productos marcados.
+  return { featured: featured.length > 0 ? featured : products.slice(0, 8), all: products };
 }
 
 async function getCollections() {
@@ -34,10 +38,11 @@ const COLLECTION_FALLBACKS = [
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const store = await getStore();
-  const dbCollections = await getCollections();
-  const dbProducts = await getProducts();
-  const dbCategories = await getCategories();
+  // Las cuatro lecturas son independientes. Hacerlas en paralelo reduce el
+  // tiempo de primera pintura, especialmente con redes móviles lentas.
+  const [store, dbCollections, dbProducts, dbCategories] = await Promise.all([
+    getStore(), getCollections(), getProducts(), getCategories(),
+  ]);
   const bannerUrl = store?.bannerUrl || 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=1600&q=80';
   const branding = store?.branding || {};
   const title = branding.heroTitle || 'Elegancia Redefinida';
@@ -96,7 +101,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       </div>
 
       {/* 1. Novedades (Nuestra Selección) - Puesto Primero */}
-      <NovedadesCarousel initialProducts={dbProducts} />
+      <NovedadesCarousel initialProducts={dbProducts.featured} />
+      <ProductDiscoveryCarousel products={dbProducts.all} />
 
       {/* 2. Catálogo — Categorías */}
       <CategoriasCarousel initialCategories={dbCategories} />

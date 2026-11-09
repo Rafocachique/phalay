@@ -47,31 +47,24 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener el perfil del usuario autenticado' })
   async me(@GetUser() user: any) {
+    const profile = await this.authService.getOwnProfile(user.id);
     return {
       success: true,
-      data: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        dni: user.dni,
-        emailVerified: user.emailVerified,
-      },
+      data: profile,
     };
   }
 
   /**
-   * Cada usuario edita SU PROPIO nombre. No toca rol ni estado: eso sigue
+   * Cada usuario edita SU PROPIO perfil. No toca rol ni estado: eso sigue
    * siendo exclusivo del SUPER_ADMIN desde Equipo/Usuarios.
    */
   @Patch('me')
   @UseGuards(JwtGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Actualizar el perfil propio (nombre y apellido)' })
+  @ApiOperation({ summary: 'Actualizar el perfil propio' })
   async updateMe(
     @GetUser() user: any,
-    @Body() body: { firstName?: string; lastName?: string },
+    @Body() body: { firstName?: string; lastName?: string; phone?: string; dni?: string },
   ) {
     const firstName = body.firstName?.trim();
     const lastName = body.lastName?.trim();
@@ -80,7 +73,21 @@ export class AuthController {
       throw new BadRequestException({ success: false, message: 'Nombre y apellido son obligatorios.' });
     }
 
-    const updated = await this.authService.updateOwnProfile(user.id, { firstName, lastName });
+    const phone = body.phone?.replace(/\D/g, '');
+    const dni = body.dni?.replace(/\D/g, '');
+    if (phone !== undefined && phone !== '' && !/^\d{9}$/.test(phone)) {
+      throw new BadRequestException({ success: false, message: 'El teléfono debe tener exactamente 9 dígitos.' });
+    }
+    if (dni !== undefined && dni !== '' && !/^\d{8}$/.test(dni)) {
+      throw new BadRequestException({ success: false, message: 'El DNI debe tener exactamente 8 dígitos.' });
+    }
+
+    const updated = await this.authService.updateOwnProfile(user.id, {
+      firstName,
+      lastName,
+      ...(phone ? { phone } : {}),
+      ...(dni ? { dni } : {}),
+    });
     return { success: true, data: updated, message: 'Perfil actualizado' };
   }
 

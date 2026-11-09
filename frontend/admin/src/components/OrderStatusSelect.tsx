@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 interface OrderStatusSelectProps {
   orderId: string;
+  orderNumber: string;
   currentStatus: string;
 }
 
@@ -21,7 +22,7 @@ const STATUS_OPTIONS = [
   { value: 'RETURNED', label: 'Devuelto', color: 'text-orange-600 bg-orange-50 border-orange-200' },
 ];
 
-export default function OrderStatusSelect({ orderId, currentStatus }: OrderStatusSelectProps) {
+export default function OrderStatusSelect({ orderId, orderNumber, currentStatus }: OrderStatusSelectProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(currentStatus);
@@ -45,7 +46,7 @@ export default function OrderStatusSelect({ orderId, currentStatus }: OrderStatu
       toast.error(result.error);
     } else {
       setStatus(newStatus);
-      toast.success(`Estado del pedido ${orderId} actualizado a ${newStatus}`);
+      toast.success(`Pedido ${orderNumber} actualizado a ${STATUS_OPTIONS.find((option) => option.value === newStatus)?.label || 'nuevo estado'}`);
       router.refresh();
     }
   };

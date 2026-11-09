@@ -203,6 +203,14 @@ export default function NuevoProductoPage() {
                     className="w-full bg-[#F8F9FA] border border-transparent rounded-xl px-4 py-3.5 focus:bg-white focus:border-[#8B5A5A] outline-none text-gray-900 font-mono transition-colors" />
                 </div>
               </div>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#8B5A5A]/20 bg-[#FBEFEF]/60 p-4 transition-colors hover:bg-[#FBEFEF]">
+                <input name="featured" type="checkbox" className="mt-1 h-4 w-4 rounded border-gray-300 text-[#8B5A5A] focus:ring-[#8B5A5A]" />
+                <span>
+                  <span className="block text-sm font-bold text-gray-900">Mostrar en Nueva colección</span>
+                  <span className="mt-1 block text-xs text-gray-500">Aparecerá en la selección principal de la tienda. Puedes destacar hasta 8 productos.</span>
+                </span>
+              </label>
             </div>
 
             {/* Tallas y Colores */}

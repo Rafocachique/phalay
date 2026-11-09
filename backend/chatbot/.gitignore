@@ -1,0 +1,6 @@
+.venv/
+.venv-model/
+__pycache__/
+*.pyc
+.pytest_cache/
+models/weights/

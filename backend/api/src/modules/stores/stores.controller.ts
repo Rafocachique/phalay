@@ -13,6 +13,24 @@ export class StoresController {
     return this.storesService.getStore();
   }
 
+  /**
+   * Datos estrictamente necesarios para pagar, sólo después de autenticar a
+   * la clienta. No se mezclan con la configuración visual pública.
+   */
+  @Get('checkout')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
+  async getCheckoutSettings() {
+    return this.storesService.getCheckoutSettings();
+  }
+
+  /** Los documentos legales son públicos por naturaleza, pero se entregan
+   * sólo al visitar sus páginas y no en la carga normal de toda la tienda. */
+  @Get('legal')
+  async getLegalDocuments() {
+    return this.storesService.getLegalDocuments();
+  }
+
   /** Configuración completa para el panel: incluye datos que no son públicos. */
   @Get('admin')
   @UseGuards(JwtGuard, RolesGuard)
