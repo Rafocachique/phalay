@@ -85,62 +85,6 @@ function UserProfileDropdown({
   );
 }
 
-/** Sección del menú superior que agrupa varias páginas en un desplegable. */
-function NavGroupMenu({ group, pathname }: { group: NavGroup; pathname: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const isActive = group.items.some((item) => pathname.startsWith(item.href));
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
-          isActive
-            ? 'bg-gradient-to-r from-[#E8C5C4] to-[#E5B8B3] text-[#6A3F3F] shadow-sm'
-            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-        }`}
-      >
-        <span className="opacity-60">{group.icon}</span>
-        {group.name}
-        <ChevronDown size={14} className={`opacity-60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 mt-2 w-60 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50 p-1">
-          {group.items.map((item) => {
-            const active = pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2.5 px-3 py-2.5 text-xs font-bold rounded-lg transition-colors ${
-                  active ? 'bg-[#FAE8E8]/70 text-[#8B5A5A]' : 'text-gray-700 hover:bg-gray-50 hover:text-[#8B5A5A]'
-                }`}
-              >
-                <span className="opacity-60">{item.icon}</span>
-                {item.name}
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function AdminShell({
   children,
   user,
@@ -222,110 +166,29 @@ export default function AdminShell({
   const isDirectActive = (item: NavItem) =>
     item.exact ? pathname === '/' : pathname.startsWith(item.href);
 
+  const navItemClass = (active: boolean) => `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${active
+    ? 'bg-gradient-to-r from-[#E8C5C4] to-[#E5B8B3] text-[#6A3F3F] shadow-sm'
+    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`;
+
   return (
-    <div className="min-h-screen w-full flex flex-col">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        {/* Una sola fila: marca, navegación y perfil a la misma altura. */}
-        <div className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 h-16 flex items-center gap-4">
-          <Link href="/" className="flex items-baseline gap-2 min-w-0 shrink-0">
-            <span className="text-xl xl:text-2xl font-black text-[#8B5A5A] tracking-tighter uppercase truncate">
-              {storeName}
-            </span>
-            <span className="hidden 2xl:inline text-[10px] font-bold text-gray-400 tracking-widest uppercase">
-              Panel de Administración
-            </span>
-          </Link>
+    <div className="min-h-screen w-full lg:flex">
+      <aside className="hidden h-screen w-72 shrink-0 flex-col border-r border-gray-200 bg-white lg:sticky lg:top-0 lg:flex xl:w-80">
+        <div className="border-b border-gray-100 px-6 py-6"><Link href="/" className="block"><p className="text-2xl font-black tracking-tighter text-[#8B5A5A] uppercase">{storeName}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Panel de administración</p></Link></div>
+        <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
+          <div><p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">Principal</p><div className="space-y-1">{directItems.map((item) => <Link key={item.href} href={item.href} className={navItemClass(isDirectActive(item))}><span className="opacity-65">{item.icon}</span>{item.name}</Link>)}</div></div>
+          {groups.map((group) => <div key={group.name}><p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">{group.name}</p><div className="space-y-1">{group.items.map((item) => <Link key={item.href} href={item.href} className={navItemClass(pathname.startsWith(item.href))}><span className="opacity-65">{item.icon}</span>{item.name}</Link>)}</div></div>)}
+        </nav>
+        <div className="border-t border-gray-100 p-4"><UserProfileDropdown user={user} isProfileOpen={isProfileOpen} setIsProfileOpen={setIsProfileOpen} /></div>
+      </aside>
 
-          <div className="flex-1" />
-
-          <nav className="hidden lg:flex items-center gap-1 shrink-0">
-            {directItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
-                  isDirectActive(item)
-                    ? 'bg-gradient-to-r from-[#E8C5C4] to-[#E5B8B3] text-[#6A3F3F] shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                <span className="opacity-60">{item.icon}</span>
-                {item.name}
-              </Link>
-            ))}
-
-            <span className="w-px h-6 bg-gray-200 mx-1.5" />
-
-            {groups.map((group) => (
-              <NavGroupMenu key={group.name} group={group} pathname={pathname} />
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <UserProfileDropdown user={user} isProfileOpen={isProfileOpen} setIsProfileOpen={setIsProfileOpen} />
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="Abrir menú"
-            >
-              {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Menú desplegable en móvil: mismas secciones, en acordeón simple */}
-        {isMobileMenuOpen && (
-          <nav className="lg:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-5">
-            {/* Sin overflow propio: el menú crece y se desplaza con la página,
-                así nunca aparecen dos barras de scroll a la vez. */}
-            <div className="space-y-1">
-              {directItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-                    isDirectActive(item)
-                      ? 'bg-gradient-to-r from-[#E8C5C4] to-[#E5B8B3] text-[#6A3F3F]'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className="opacity-60">{item.icon}</span>
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-
-            {groups.map((group) => (
-              <div key={group.name}>
-                <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">{group.name}</p>
-                <div className="space-y-1 pl-2 border-l-2 border-gray-100 ml-4">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                        pathname.startsWith(item.href)
-                          ? 'bg-gradient-to-r from-[#E8C5C4] to-[#E5B8B3] text-[#6A3F3F]'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="opacity-60">{item.icon}</span>
-                      {item.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </nav>
-        )}
-      </header>
-
+      <div className="min-w-0 flex-1">
+        <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 shadow-sm backdrop-blur lg:hidden"><div className="flex h-16 items-center justify-between px-4"><Link href="/" className="text-xl font-black tracking-tighter text-[#8B5A5A] uppercase">{storeName}</Link><div className="flex items-center gap-2"><UserProfileDropdown user={user} isProfileOpen={isProfileOpen} setIsProfileOpen={setIsProfileOpen} /><button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="rounded-lg p-2 text-gray-600 hover:bg-gray-100" aria-label="Abrir menú">{isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}</button></div></div>
+          {isMobileMenuOpen && <nav className="max-h-[calc(100vh-4rem)] space-y-5 overflow-y-auto border-t border-gray-100 bg-white px-4 py-4"><div className="space-y-1">{directItems.map((item) => <Link key={item.href} href={item.href} className={navItemClass(isDirectActive(item))}><span className="opacity-65">{item.icon}</span>{item.name}</Link>)}</div>{groups.map((group) => <div key={group.name}><p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">{group.name}</p><div className="space-y-1">{group.items.map((item) => <Link key={item.href} href={item.href} className={navItemClass(pathname.startsWith(item.href))}><span className="opacity-65">{item.icon}</span>{item.name}</Link>)}</div></div>)}</nav>}
+        </header>
+        <main className="w-full"><div className="mx-auto w-full max-w-[1700px] p-4 sm:p-6 lg:p-8">{children}</div></main>
+      </div>
       <Toaster position="top-center" richColors />
       <IdleSessionGuard timeoutMinutes={idleTimeoutMinutes} />
-
-      <main className="flex-1 w-full">
-        <div className="max-w-[1600px] mx-auto w-full p-4 sm:p-8">{children}</div>
-      </main>
     </div>
   );
 }
