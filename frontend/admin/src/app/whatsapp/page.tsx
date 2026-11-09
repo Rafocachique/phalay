@@ -1,8 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { WaConversation, WaMessage, WaStatus, whatsappConversations, whatsappMessages, whatsappMode,
-  whatsappProcess, whatsappReply, whatsappStatus } from '@/app/actions/whatsapp';
+import { WaAccount, WaConversation, WaMessage, WaStatus, whatsappAccounts, whatsappAccountBotMode, whatsappConversations, whatsappCreateAccount, whatsappMessages, whatsappMode,
+  whatsappProcess, whatsappReply, whatsappStatus, whatsappAssignAdmin } from '@/app/actions/whatsapp';
+import { getUsers } from '@/app/actions/users';
 
 const modes = { BOT: 'Bot', WAITING: 'Espera vendedor', HUMAN: 'Atención humana' };
 const states: Record<string, string> = { QUEUED: 'Pendiente del bot', PROCESSING: 'Procesando', RECEIVED: 'Recibido',
@@ -11,6 +12,10 @@ const states: Record<string, string> = { QUEUED: 'Pendiente del bot', PROCESSING
 export default function WhatsappPage() {
   const [status, setStatus] = useState<WaStatus>();
   const [conversations, setConversations] = useState<WaConversation[]>([]);
+  const [accounts, setAccounts] = useState<WaAccount[]>([]);
+  const [accountName, setAccountName] = useState('');
+  const [admins, setAdmins] = useState<{ id: string; firstName: string; lastName: string; role: string }[]>([]);
+  const [adminByAccount, setAdminByAccount] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string>();
   const selectedRef = useRef<string | undefined>(undefined);
   const [messages, setMessages] = useState<WaMessage[]>([]);
@@ -24,13 +29,15 @@ export default function WhatsappPage() {
     const result = await whatsappStatus();
     if (!result.data) { setError(result.error || 'No se pudo consultar la configuración'); return; }
     setStatus(result.data);
+    const connected = await whatsappAccounts();
+    if (connected.data) setAccounts(connected.data);
     if (!result.data.databaseReady || !result.data.phoneConfigured) return;
     const list = await whatsappConversations();
     if (list.data) setConversations(list.data);
     else setError(list.error || 'No se pudieron cargar conversaciones');
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refresh(); void getUsers().then((items) => setAdmins(items.filter((item: any) => ['ADMIN', 'SUPER_ADMIN'].includes(item.role)))); }, [refresh]);
 
   async function open(id: string) {
     selectedRef.current = id;
@@ -79,6 +86,25 @@ export default function WhatsappPage() {
     } finally { setBusy(false); }
   }
 
+  async function createAccount(event: FormEvent) {
+    event.preventDefault(); if (busy) return;
+    setBusy(true); setError(''); setNotice('');
+    try { const result = await whatsappCreateAccount(accountName); if (result.error) setError(result.error); else { setAccountName(''); setNotice('Cuenta creada. Cuando Meta habilite el QR de coexistencia, podrás vincular su WhatsApp Business.'); await refresh(); } }
+    finally { setBusy(false); }
+  }
+
+  async function accountMode(id: string, mode: WaAccount['bot_mode']) {
+    if (busy) return; setBusy(true); setError(''); setNotice('');
+    try { const result = await whatsappAccountBotMode(id, mode); if (result.error) setError(result.error); else { setNotice('Modo de atención actualizado para esta cuenta.'); await refresh(); } }
+    finally { setBusy(false); }
+  }
+  async function assignAdmin(accountId: string) {
+    const userId = adminByAccount[accountId]; if (!userId || busy) return;
+    setBusy(true); setError(''); setNotice('');
+    try { const result = await whatsappAssignAdmin(accountId, userId); if (result.error) setError(result.error); else { setNotice('Administrador asignado a esta cuenta. Ambos podrán atender la misma bandeja.'); setAdminByAccount((value) => ({ ...value, [accountId]: '' })); } }
+    finally { setBusy(false); }
+  }
+
   return <main className="space-y-5 p-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h1 className="text-3xl font-bold">WhatsApp</h1><p className="mt-1 text-gray-600">Conversaciones del número conectado a PHALAY.</p></div>
@@ -92,6 +118,16 @@ export default function WhatsappPage() {
       <p className="mt-2">Envío: {status.sendConfigured ? 'Configurado' : 'Faltan credenciales'} · Bot automático: {status.botEnabled ? 'Habilitado' : 'Desactivado'} · Motor: {status.engineConfigured ? 'Configurado' : 'Pendiente'}</p>
       <p className="mt-2">Configura primero el número de prueba. <Link href="/chatbot" className="underline">Probar conocimiento</Link></p>
     </section>}
+    <section className="rounded-xl border bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">Cuentas de WhatsApp</h2><p className="mt-1 text-sm text-gray-600">Una cuenta puede tener varios administradores asignados. Cada cuenta elige su propio modo de atención.</p></div>
+        <form onSubmit={createAccount} className="flex gap-2"><input value={accountName} onChange={(event) => setAccountName(event.target.value)} maxLength={120} required placeholder="Ej.: WhatsApp de Ana" className="rounded-lg border px-3 py-2 text-sm" />
+          <button disabled={busy} className="rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-50">Agregar cuenta</button></form></div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">{!accounts.length && <p className="text-sm text-gray-500">Todavía no hay cuentas individuales configuradas.</p>}
+        {accounts.map((account) => <article key={account.id} className="rounded-lg border p-3"><div className="flex justify-between gap-2"><div><p className="font-medium">{account.display_name}</p><p className="text-xs text-gray-500">{account.phone_number_id ? 'Número conectado' : 'Pendiente de QR de coexistencia'} · {account.permission === 'MANAGE' ? 'Puede gestionar' : 'Puede responder'}</p></div><span className="text-xs font-medium text-gray-600">{account.status}</span></div>
+          <div className="mt-3 flex flex-wrap gap-2">{(['BOT','MANUAL','PAUSED'] as const).map((mode) => <button key={mode} disabled={busy || account.permission === 'RESPOND'} onClick={() => void accountMode(account.id, mode)}
+            className={`rounded border px-2 py-1 text-xs ${account.bot_mode === mode ? 'border-black bg-black text-white' : ''} disabled:opacity-50`}>{mode === 'BOT' ? 'Bot' : mode === 'MANUAL' ? 'Manual' : 'Pausado'}</button>)}</div>
+          {account.permission === 'MANAGE' && <div className="mt-3 flex gap-2"><select value={adminByAccount[account.id] || ''} onChange={(event) => setAdminByAccount((value) => ({ ...value, [account.id]: event.target.value }))} className="min-w-0 flex-1 rounded border px-2 py-1 text-xs"><option value="">Asignar administrador…</option>{admins.map((admin) => <option key={admin.id} value={admin.id}>{admin.firstName} {admin.lastName}</option>)}</select><button onClick={() => void assignAdmin(account.id)} disabled={busy || !adminByAccount[account.id]} className="rounded border px-2 py-1 text-xs disabled:opacity-50">Asignar</button></div>}</article>)}</div>
+    </section>
     <div aria-live="polite">{error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{error}</p>}
       {notice && <p className="rounded-lg bg-blue-50 p-3 text-blue-900">{notice}</p>}</div>
     <div className="grid gap-4 md:grid-cols-[280px_1fr]">

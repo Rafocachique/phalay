@@ -21,9 +21,32 @@ create table if not exists public.wa_messages (
   state text not null check (state in ('QUEUED', 'PROCESSING', 'RECEIVED', 'SENDING', 'SENT', 'UNKNOWN', 'REVIEW')),
   created_at timestamptz not null default now()
 );
+-- Cuentas de WhatsApp independientes. La conexión QR, el modo del bot y el
+-- acceso de los administradores se administran por cuenta, no globalmente.
+create table if not exists public.wa_accounts (
+  id uuid primary key default gen_random_uuid(),
+  display_name text not null check (char_length(display_name) between 1 and 120),
+  phone_number_id text unique,
+  waba_id text unique,
+  owner_id uuid not null references public.users(id),
+  status text not null default 'PENDING' check (status in ('PENDING', 'ACTIVE', 'PAUSED', 'DISCONNECTED')),
+  bot_mode text not null default 'MANUAL' check (bot_mode in ('BOT', 'MANUAL', 'PAUSED')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.wa_account_members (
+  account_id uuid not null references public.wa_accounts(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  permission text not null default 'RESPOND' check (permission in ('MANAGE', 'RESPOND')),
+  created_at timestamptz not null default now(),
+  primary key (account_id, user_id)
+);
+create index if not exists wa_account_members_user_idx on public.wa_account_members(user_id);
 create index if not exists wa_messages_queue_idx on public.wa_messages(state, created_at);
 create index if not exists wa_messages_conversation_idx on public.wa_messages(conversation_id, created_at);
 alter table public.wa_conversations enable row level security;
 alter table public.wa_messages enable row level security;
-revoke all on public.wa_conversations, public.wa_messages from anon, authenticated;
+alter table public.wa_accounts enable row level security;
+alter table public.wa_account_members enable row level security;
+revoke all on public.wa_conversations, public.wa_messages, public.wa_accounts, public.wa_account_members from anon, authenticated;
 -- Acceso únicamente desde la API NestJS con el rol de conexión del servidor.

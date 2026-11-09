@@ -1,7 +1,7 @@
 import { Body, Controller, ForbiddenException, Get, Headers, HttpCode, Param, ParseUUIDPipe, Post, Query, RawBodyRequest, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SkipThrottle } from '@nestjs/throttler';
-import { IsIn, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
 import type { Request, Response } from 'express';
 import { JwtGuard } from '../auth/jwt.guard';
 import { Roles, RolesGuard } from '../auth/roles.guard';
@@ -20,6 +20,10 @@ class ReplyDto {
   message!: string;
 }
 type UserRequest = Request & { user: { id: string } };
+type AdminRequest = Request & { user: { id: string; role: string } };
+class AccountDto { @IsString() @MinLength(2) @MaxLength(120) displayName!: string; }
+class AccountMemberDto { @IsUUID() userId!: string; @IsIn(['MANAGE', 'RESPOND']) permission!: 'MANAGE' | 'RESPOND'; }
+class AccountModeDto { @IsIn(['BOT', 'MANUAL', 'PAUSED']) mode!: 'BOT' | 'MANUAL' | 'PAUSED'; }
 
 @Controller('whatsapp')
 export class WhatsappWebhookController {
@@ -54,6 +58,26 @@ export class WhatsappInboxController {
   @Get('status')
   @Roles(['ADMIN', 'SUPER_ADMIN'])
   status() { return this.whatsapp.status(); }
+
+  @Get('accounts')
+  @Roles(['ADMIN', 'SUPER_ADMIN'])
+  accounts(@Req() request: AdminRequest) { return this.whatsapp.accounts(request.user.id, request.user.role === 'SUPER_ADMIN'); }
+
+  @Post('accounts')
+  @Roles(['ADMIN', 'SUPER_ADMIN'])
+  createAccount(@Body() body: AccountDto, @Req() request: AdminRequest) { return this.whatsapp.createAccount(body.displayName.trim(), request.user.id); }
+
+  @Post('accounts/:id/members')
+  @Roles(['ADMIN', 'SUPER_ADMIN'])
+  addMember(@Param('id', ParseUUIDPipe) id: string, @Body() body: AccountMemberDto, @Req() request: AdminRequest) {
+    return this.whatsapp.addMember(id, body.userId, body.permission, request.user.id, request.user.role === 'SUPER_ADMIN');
+  }
+
+  @Post('accounts/:id/bot-mode')
+  @Roles(['ADMIN', 'SUPER_ADMIN'])
+  accountMode(@Param('id', ParseUUIDPipe) id: string, @Body() body: AccountModeDto, @Req() request: AdminRequest) {
+    return this.whatsapp.setAccountBotMode(id, body.mode, request.user.id, request.user.role === 'SUPER_ADMIN');
+  }
 
   @Get('conversations')
   @Roles(['ADMIN', 'SUPER_ADMIN'])

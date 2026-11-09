@@ -5,6 +5,8 @@ export type WaConversation = { id: string; customer_wa_id: string; mode: 'BOT' |
 export type WaMessage = { id: string; direction: 'IN' | 'OUT'; body: string; state: string; created_at: string };
 export type WaStatus = { databaseReady: boolean; webhookConfigured: boolean; phoneConfigured: boolean;
   sendConfigured: boolean; botEnabled: boolean; engineConfigured: boolean; callbackPath: string };
+export type WaAccount = { id: string; display_name: string; phone_number_id: string | null; waba_id: string | null;
+  owner_id: string; status: 'PENDING' | 'ACTIVE' | 'PAUSED' | 'DISCONNECTED'; bot_mode: 'BOT' | 'MANUAL' | 'PAUSED'; permission?: 'MANAGE' | 'RESPOND' };
 
 async function call<T>(path: string, body?: unknown): Promise<{ data?: T; error?: string }> {
   try {
@@ -42,3 +44,16 @@ export async function whatsappReply(id: string, message: string) {
   return call<{ sent: boolean }>(`conversations/${id}/reply`, { message });
 }
 export async function whatsappProcess() { return call<{ processed: number; enabled: boolean }>('process', {}); }
+export async function whatsappAccounts() { return call<WaAccount[]>('accounts'); }
+export async function whatsappCreateAccount(displayName: string) {
+  if (!displayName.trim() || displayName.trim().length > 120) return { error: 'Escribe un nombre de 2 a 120 caracteres.' };
+  return call<WaAccount>('accounts', { displayName: displayName.trim() });
+}
+export async function whatsappAccountBotMode(id: string, mode: WaAccount['bot_mode']) {
+  if (!/^[a-f0-9-]{36}$/i.test(id)) return { error: 'Cuenta inválida.' };
+  return call<WaAccount>(`accounts/${id}/bot-mode`, { mode });
+}
+export async function whatsappAssignAdmin(accountId: string, userId: string, permission: 'MANAGE' | 'RESPOND' = 'RESPOND') {
+  if (!/^[a-f0-9-]{36}$/i.test(accountId) || !/^[a-f0-9-]{36}$/i.test(userId)) return { error: 'Administrador o cuenta inválidos.' };
+  return call<{ assigned: boolean }>(`accounts/${accountId}/members`, { userId, permission });
+}

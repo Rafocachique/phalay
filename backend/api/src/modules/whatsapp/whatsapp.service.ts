@@ -8,6 +8,9 @@ import { equalSecret, parseMessages, validSignature } from './whatsapp.security'
 type Conversation = { id: string; phone_number_id: string; customer_wa_id: string; mode: 'BOT' | 'HUMAN' | 'WAITING';
   assigned_to: string | null; last_customer_at: Date; busy_until: Date; updated_at: Date; lease_token: string | null };
 type Message = { id: string; conversation_id: string; body: string; state: string; direction: string; created_at: Date };
+export type WhatsappAccount = { id: string; display_name: string; phone_number_id: string | null; waba_id: string | null;
+  owner_id: string; status: 'PENDING' | 'ACTIVE' | 'PAUSED' | 'DISCONNECTED'; bot_mode: 'BOT' | 'MANUAL' | 'PAUSED';
+  permission?: 'MANAGE' | 'RESPOND'; created_at: Date; updated_at: Date };
 
 @Injectable()
 export class WhatsappService {
@@ -107,6 +110,52 @@ export class WhatsappService {
       botEnabled: this.config.get('WHATSAPP_BOT_ENABLED') === 'true',
       engineConfigured: !!this.config.get('CHATBOT_SERVICE_URL') && !!this.config.get('CHATBOT_API_KEY'),
       callbackPath: '/api/v1/whatsapp/webhook' };
+  }
+
+  /** Lista sólo las bandejas que el usuario puede atender. El superadmin ve todas. */
+  async accounts(userId: string, isSuperAdmin: boolean) {
+    if (isSuperAdmin) return this.db.$queryRaw<WhatsappAccount[]>`
+      SELECT a.* FROM public.wa_accounts a ORDER BY a.created_at DESC`;
+    return this.db.$queryRaw<WhatsappAccount[]>`
+      SELECT a.*, m.permission FROM public.wa_accounts a
+      JOIN public.wa_account_members m ON m.account_id = a.id
+      WHERE m.user_id = ${userId}::uuid ORDER BY a.created_at DESC`;
+  }
+
+  /** Crea una bandeja pendiente; el QR oficial sólo se muestra después de configurar Meta Embedded Signup. */
+  async createAccount(displayName: string, ownerId: string) {
+    return this.db.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<WhatsappAccount[]>`
+        INSERT INTO public.wa_accounts(display_name, owner_id) VALUES (${displayName}, ${ownerId}::uuid) RETURNING *`;
+      const account = rows[0];
+      await tx.$executeRaw`INSERT INTO public.wa_account_members(account_id, user_id, permission)
+        VALUES (${account.id}::uuid, ${ownerId}::uuid, 'MANAGE') ON CONFLICT DO NOTHING`;
+      return account;
+    });
+  }
+
+  private async manageable(accountId: string, userId: string, isSuperAdmin: boolean) {
+    if (isSuperAdmin) return;
+    const rows = await this.db.$queryRaw<{ account_id: string }[]>`
+      SELECT account_id FROM public.wa_account_members WHERE account_id = ${accountId}::uuid
+      AND user_id = ${userId}::uuid AND permission = 'MANAGE'`;
+    if (!rows.length) throw new ForbiddenException('Sólo el propietario o superadministrador puede gestionar esta cuenta');
+  }
+
+  async addMember(accountId: string, memberId: string, permission: 'MANAGE' | 'RESPOND', userId: string, isSuperAdmin: boolean) {
+    await this.manageable(accountId, userId, isSuperAdmin);
+    await this.db.$executeRaw`INSERT INTO public.wa_account_members(account_id, user_id, permission)
+      VALUES (${accountId}::uuid, ${memberId}::uuid, ${permission})
+      ON CONFLICT (account_id, user_id) DO UPDATE SET permission = EXCLUDED.permission`;
+    return { assigned: true };
+  }
+
+  async setAccountBotMode(accountId: string, mode: 'BOT' | 'MANUAL' | 'PAUSED', userId: string, isSuperAdmin: boolean) {
+    await this.manageable(accountId, userId, isSuperAdmin);
+    const rows = await this.db.$queryRaw<WhatsappAccount[]>`
+      UPDATE public.wa_accounts SET bot_mode = ${mode}, updated_at = now() WHERE id = ${accountId}::uuid RETURNING *`;
+    if (!rows.length) throw new NotFoundException('Cuenta de WhatsApp no encontrada');
+    return rows[0];
   }
 
   private async claim(id: string): Promise<Conversation> {

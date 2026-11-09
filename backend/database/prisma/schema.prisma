@@ -532,6 +532,33 @@ model WhatsappMessage {
   @@map("wa_messages")
 }
 
+/// Cuenta enlazada mediante WhatsApp Business coexistente. Un número puede
+/// tener varios administradores, pero no mezcla conversaciones con otros números.
+model WhatsappAccount {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  displayName   String @map("display_name")
+  phoneNumberId String? @unique @map("phone_number_id")
+  wabaId        String? @unique @map("waba_id")
+  ownerId       String @map("owner_id") @db.Uuid
+  status        String @default("PENDING")
+  botMode       String @default("MANUAL") @map("bot_mode")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  members       WhatsappAccountMember[]
+  @@map("wa_accounts")
+}
+
+model WhatsappAccountMember {
+  accountId  String @map("account_id") @db.Uuid
+  userId     String @map("user_id") @db.Uuid
+  permission String @default("RESPOND")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  account    WhatsappAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  @@id([accountId, userId])
+  @@index([userId])
+  @@map("wa_account_members")
+}
+
 enum UserRole {
   CUSTOMER
   ADMIN
