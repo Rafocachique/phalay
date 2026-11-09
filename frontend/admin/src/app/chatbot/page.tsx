@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { BotPreview, previewChatbot } from '@/app/actions/chatbot';
 
-const labels = { answer: 'Respuesta aprobada', clarify: 'Pedir aclaración', handoff: 'Requiere vendedor', paused: 'Bot en pausa' };
+const labels = { answer: 'Respuesta aprobada', clarify: 'Pedir aclaración', handoff: 'Derivar al equipo', paused: 'Atención del equipo activa' };
 
 export default function ChatbotPage() {
   const [message, setMessage] = useState('');
@@ -44,7 +44,7 @@ export default function ChatbotPage() {
           placeholder="Por ejemplo: ¿Qué vende PHALAY?" />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={humanActive} onChange={(event) => setHumanActive(event.target.checked)} />
-          Simular que un vendedor ya está atendiendo
+          Simular que el equipo ya está atendiendo
         </label>
         <button type="submit" disabled={busy || !message.trim()} className="rounded-lg bg-black px-5 py-2 text-white disabled:opacity-50">
           {busy ? 'Consultando…' : 'Probar respuesta'}
@@ -54,7 +54,7 @@ export default function ChatbotPage() {
         {error && <p role="alert" className="rounded-lg bg-red-50 p-4 text-red-800">{error}</p>}
         {result && <section className="space-y-3 rounded-xl border bg-white p-5">
           <h2 className="font-semibold">{labels[result.action]}</h2>
-          <p className="whitespace-pre-wrap">{result.answer || 'El bot no responde mientras atiende el vendedor.'}</p>
+          <p className="whitespace-pre-wrap">{result.answer || 'La atención queda en manos del equipo.'}</p>
           {result.suggestions.length > 0 && <ul className="list-inside list-disc">{result.suggestions.map((item) => <li key={item}>{item}</li>)}</ul>}
           {result.sources.length > 0 && <p className="text-sm text-gray-500">Artículos utilizados: {result.sources.join(', ')}</p>}
         </section>}

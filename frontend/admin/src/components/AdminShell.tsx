@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import {
   LayoutDashboard, ShoppingBag, Layers, ClipboardList, Users,
-  Palette, Scale, Wallet, Tag, ChevronDown, Settings, Info, Truck, Menu, X, FileText
+  Palette, Scale, Wallet, Tag, ChevronDown, Settings, Info, Truck, Menu, X, FileText, MessageCircle
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
@@ -195,7 +195,7 @@ export default function AdminShell({
         { name: 'Ajustes Generales', href: '/settings', icon: <Settings size={16} strokeWidth={2.5} /> },
         { name: 'Preguntas Frecuentes', href: '/faqs', icon: <Info size={16} strokeWidth={2.5} /> },
         { name: 'Probar asistente', href: '/chatbot', icon: <Info size={16} strokeWidth={2.5} /> },
-        { name: 'WhatsApp', href: '/whatsapp', icon: <Info size={16} strokeWidth={2.5} /> },
+        { name: 'WhatsApp', href: '/whatsapp', icon: <MessageCircle size={16} strokeWidth={2.5} /> },
         { name: 'Textos Legales', href: '/legal', icon: <Scale size={16} strokeWidth={2.5} /> },
         { name: 'Libro de Reclamaciones', href: '/reclamaciones', icon: <FileText size={16} strokeWidth={2.5} /> },
       ],

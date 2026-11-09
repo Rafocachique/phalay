@@ -30,12 +30,12 @@ class Bot:
             return BotReply("", "paused", "human_active")
         text = normalize(message)
         if re.search(r"\b(vendedor|vendedora|asesor|asesora|humano|humana|persona|reclamo|reclamar)\b", text):
-            return BotReply("Tu consulta necesita atención de un vendedor.", "handoff", "human_requested")
+            return BotReply("Gracias por escribirnos. Un integrante del equipo continuará con tu consulta.", "handoff", "human_requested")
         if re.fullmatch(r"[\s¡!¿?.,]*(hola|buenos dias|buenas tardes|buenas noches|buenas)[\s¡!¿?.,]*", text):
-            return BotReply("Hola, soy el asistente automático de PHALAY. ¿En qué puedo ayudarte? También puedes pedir un vendedor.", "answer", "greeting")
+            return BotReply("¡Hola! Gracias por escribir a PHALAY. ¿Cómo podemos ayudarte?", "answer", "greeting")
         matches = self.retriever.search(message)
         if not matches or matches[0][1] < 0.66:
-            return BotReply("No tengo información confirmada para responder esa consulta. Puedes pedir atención de un vendedor.", "handoff", "insufficient_knowledge")
+            return BotReply("Gracias por tu consulta. Un integrante del equipo la revisará para brindarte una respuesta precisa.", "handoff", "insufficient_knowledge")
         article, score = matches[0]
         if len(matches) > 1 and matches[1][1] >= 0.50 and score - matches[1][1] < 0.12:
             return BotReply("¿Sobre cuál de estos temas necesitas información?", "clarify", "ambiguous",
