@@ -13,14 +13,15 @@ export function validSignature(raw: Buffer | undefined, signature: string | unde
 
 export type IncomingMessage = { id: string; customer: string; phoneId: string; body: string; at: Date; text: boolean };
 
-export function parseMessages(payload: any, phoneId: string): IncomingMessage[] {
+export function parseMessages(payload: any, phoneIds: ReadonlySet<string>): IncomingMessage[] {
   if (payload?.object !== 'whatsapp_business_account' || !Array.isArray(payload.entry)) return [];
   const result: IncomingMessage[] = [];
   for (const entry of payload.entry.slice(0, 100)) {
     if (!Array.isArray(entry?.changes)) continue;
     for (const change of entry.changes.slice(0, 100)) {
       const value = change?.value;
-      if (change?.field !== 'messages' || value?.metadata?.phone_number_id !== phoneId || !Array.isArray(value.messages)) continue;
+      const phoneId = value?.metadata?.phone_number_id;
+      if (change?.field !== 'messages' || typeof phoneId !== 'string' || !phoneIds.has(phoneId) || !Array.isArray(value.messages)) continue;
       for (const message of value.messages.slice(0, 100)) {
         if (typeof message?.id !== 'string' || message.id.length > 300 || !message.id ||
             typeof message.from !== 'string' || !/^\d{6,20}$/.test(message.from)) continue;

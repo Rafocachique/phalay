@@ -19,7 +19,6 @@ class ReplyDto {
   @Matches(/\S/)
   message!: string;
 }
-type UserRequest = Request & { user: { id: string } };
 type AdminRequest = Request & { user: { id: string; role: string } };
 class AccountDto { @IsString() @MinLength(2) @MaxLength(120) displayName!: string; }
 class AccountMemberDto { @IsUUID() userId!: string; @IsIn(['MANAGE', 'RESPOND']) permission!: 'MANAGE' | 'RESPOND'; }
@@ -81,22 +80,24 @@ export class WhatsappInboxController {
 
   @Get('conversations')
   @Roles(['ADMIN', 'SUPER_ADMIN'])
-  list() { return this.whatsapp.list(); }
+  list(@Req() request: AdminRequest) { return this.whatsapp.list(request.user.id, request.user.role === 'SUPER_ADMIN'); }
 
   @Get('conversations/:id/messages')
   @Roles(['ADMIN', 'SUPER_ADMIN'])
-  history(@Param('id', ParseUUIDPipe) id: string) { return this.whatsapp.history(id); }
+  history(@Param('id', ParseUUIDPipe) id: string, @Req() request: AdminRequest) {
+    return this.whatsapp.history(id, request.user.id, request.user.role === 'SUPER_ADMIN');
+  }
 
   @Post('conversations/:id/mode')
   @Roles(['ADMIN', 'SUPER_ADMIN'])
-  mode(@Param('id', ParseUUIDPipe) id: string, @Body() body: ModeDto, @Req() request: UserRequest) {
-    return this.whatsapp.setMode(id, body.mode, request.user.id);
+  mode(@Param('id', ParseUUIDPipe) id: string, @Body() body: ModeDto, @Req() request: AdminRequest) {
+    return this.whatsapp.setMode(id, body.mode, request.user.id, request.user.role === 'SUPER_ADMIN');
   }
 
   @Post('conversations/:id/reply')
   @Roles(['ADMIN', 'SUPER_ADMIN'])
-  reply(@Param('id', ParseUUIDPipe) id: string, @Body() body: ReplyDto, @Req() request: UserRequest) {
-    return this.whatsapp.manualReply(id, body.message, request.user.id);
+  reply(@Param('id', ParseUUIDPipe) id: string, @Body() body: ReplyDto, @Req() request: AdminRequest) {
+    return this.whatsapp.manualReply(id, body.message, request.user.id, request.user.role === 'SUPER_ADMIN');
   }
 
   @Post('process')

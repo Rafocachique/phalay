@@ -6,7 +6,7 @@ export type WaMessage = { id: string; direction: 'IN' | 'OUT'; body: string; sta
 export type WaStatus = { databaseReady: boolean; webhookConfigured: boolean; phoneConfigured: boolean;
   sendConfigured: boolean; botEnabled: boolean; engineConfigured: boolean; callbackPath: string };
 export type WaAccount = { id: string; display_name: string; phone_number_id: string | null; waba_id: string | null;
-  owner_id: string; status: 'PENDING' | 'ACTIVE' | 'PAUSED' | 'DISCONNECTED'; bot_mode: 'BOT' | 'MANUAL' | 'PAUSED'; permission?: 'MANAGE' | 'RESPOND' };
+  owner_id: string; status: 'PENDING' | 'ACTIVE' | 'PAUSED' | 'DISCONNECTED'; bot_mode: 'BOT' | 'MANUAL' | 'PAUSED'; permission?: 'MANAGE' | 'RESPOND'; member_count?: number };
 
 async function call<T>(path: string, body?: unknown): Promise<{ data?: T; error?: string }> {
   try {

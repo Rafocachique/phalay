@@ -41,6 +41,12 @@ create table if not exists public.wa_account_members (
   created_at timestamptz not null default now(),
   primary key (account_id, user_id)
 );
+-- Una conversación pertenece a una cuenta conectada. Se permite NULL sólo para
+-- conservar conversaciones históricas creadas antes de las bandejas múltiples.
+alter table public.wa_conversations
+  add column if not exists account_id uuid references public.wa_accounts(id);
+create index if not exists wa_conversations_account_updated_idx
+  on public.wa_conversations(account_id, updated_at desc);
 create index if not exists wa_account_members_user_idx on public.wa_account_members(user_id);
 create index if not exists wa_messages_queue_idx on public.wa_messages(state, created_at);
 create index if not exists wa_messages_conversation_idx on public.wa_messages(conversation_id, created_at);

@@ -12,7 +12,7 @@ const db = new PrismaClient({ datasources: { db: { url } }, log: [] });
 (async () => {
   try {
     const rows = await db.$queryRaw`SELECT table_name, column_name, data_type FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name IN ('wa_conversations', 'wa_messages') ORDER BY table_name, ordinal_position`;
+      WHERE table_schema = 'public' AND table_name IN ('wa_conversations', 'wa_messages', 'wa_accounts', 'wa_account_members') ORDER BY table_name, ordinal_position`;
     const [base] = await db.$queryRaw`SELECT to_regclass('public.faqs') IS NOT NULL AS phalay_schema`;
     console.log(JSON.stringify({ phalaySchema: base.phalay_schema, existingColumns: rows }));
     if (!base.phalay_schema) throw new Error('No se reconoce el esquema PHALAY');
@@ -28,7 +28,7 @@ const db = new PrismaClient({ datasources: { db: { url } }, log: [] });
       console.log('Tablas, índices y RLS de WhatsApp aplicados.');
     }
     const protection = await db.$queryRaw`SELECT relname, relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = 'public' AND relname IN ('wa_conversations', 'wa_messages')`;
+      WHERE n.nspname = 'public' AND relname IN ('wa_conversations', 'wa_messages', 'wa_accounts', 'wa_account_members')`;
     console.log(JSON.stringify({ tables: protection }));
   } catch (error) {
     console.error(JSON.stringify({ error: 'No se pudo completar la operación de base de datos', code: error.code || error.name }));

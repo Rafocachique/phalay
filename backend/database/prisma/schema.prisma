@@ -500,6 +500,7 @@ model AuditLog {
 // Tablas de la bandeja de WhatsApp. Su SQL y RLS están en backend/database/whatsapp.sql.
 model WhatsappConversation {
   id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accountId      String? @map("account_id") @db.Uuid
   phoneNumberId  String @map("phone_number_id")
   customerWaId   String @map("customer_wa_id")
   mode           String @default("BOT")
@@ -508,9 +509,11 @@ model WhatsappConversation {
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz
   busyUntil      DateTime @default(dbgenerated("'epoch'::timestamp with time zone")) @map("busy_until") @db.Timestamptz
   leaseToken     String? @map("lease_token") @db.Uuid
+  account        WhatsappAccount? @relation(fields: [accountId], references: [id])
   messages       WhatsappMessage[]
 
   @@unique([phoneNumberId, customerWaId])
+  @@index([accountId, updatedAt], map: "wa_conversations_account_updated_idx")
   @@map("wa_conversations")
 }
 
@@ -545,6 +548,7 @@ model WhatsappAccount {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   members       WhatsappAccountMember[]
+  conversations WhatsappConversation[]
   @@map("wa_accounts")
 }
 

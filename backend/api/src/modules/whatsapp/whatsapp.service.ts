@@ -6,11 +6,11 @@ import { ChatbotService } from '../chatbot/chatbot.service';
 import { equalSecret, parseMessages, validSignature } from './whatsapp.security';
 
 type Conversation = { id: string; phone_number_id: string; customer_wa_id: string; mode: 'BOT' | 'HUMAN' | 'WAITING';
-  assigned_to: string | null; last_customer_at: Date; busy_until: Date; updated_at: Date; lease_token: string | null };
+  account_id: string | null; assigned_to: string | null; last_customer_at: Date; busy_until: Date; updated_at: Date; lease_token: string | null };
 type Message = { id: string; conversation_id: string; body: string; state: string; direction: string; created_at: Date };
 export type WhatsappAccount = { id: string; display_name: string; phone_number_id: string | null; waba_id: string | null;
   owner_id: string; status: 'PENDING' | 'ACTIVE' | 'PAUSED' | 'DISCONNECTED'; bot_mode: 'BOT' | 'MANUAL' | 'PAUSED';
-  permission?: 'MANAGE' | 'RESPOND'; created_at: Date; updated_at: Date };
+  permission?: 'MANAGE' | 'RESPOND'; member_count?: number; created_at: Date; updated_at: Date };
 
 @Injectable()
 export class WhatsappService {
@@ -21,6 +21,12 @@ export class WhatsappService {
     const id = this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID');
     if (!id || !/^\d+$/.test(id)) throw new ServiceUnavailableException('Configura el número de WhatsApp');
     return id;
+  }
+
+  private async connectedAccounts() {
+    return this.db.$queryRaw<WhatsappAccount[]>`
+      SELECT * FROM public.wa_accounts
+      WHERE status = 'ACTIVE' AND phone_number_id IS NOT NULL`;
   }
 
   verify(mode: string | undefined, token: string | undefined, challenge: string | undefined): string {
@@ -36,24 +42,30 @@ export class WhatsappService {
     const secret = this.config.get<string>('WHATSAPP_APP_SECRET');
     if (!secret) throw new ServiceUnavailableException('Configura el secreto de la app de Meta');
     if (!validSignature(raw, signature, secret)) throw new ForbiddenException('Firma inválida');
-    const messages = parseMessages(payload, this.phoneId());
+    const accounts = await this.connectedAccounts();
+    // El número de pruebas existente sigue funcionando durante la migración.
+    const allowedPhoneIds = new Set([this.phoneId(), ...accounts.map((account) => account.phone_number_id!).filter(Boolean)]);
+    const accountByPhone = new Map(accounts.map((account) => [account.phone_number_id!, account]));
+    const messages = parseMessages(payload, allowedPhoneIds);
     for (const message of messages) {
+      const account = accountByPhone.get(message.phoneId);
       // Un solo commit guarda conversación y mensaje. El ID de Meta elimina duplicados.
       await this.db.$transaction(async (tx) => {
         const existing = await tx.$queryRaw<{ id: string }[]>`
           SELECT id FROM public.wa_messages WHERE external_id = ${message.id}`;
         if (existing.length) return;
         const conversations = await tx.$queryRaw<Conversation[]>`
-          INSERT INTO public.wa_conversations(phone_number_id, customer_wa_id, last_customer_at)
-          VALUES (${message.phoneId}, ${message.customer}, ${message.at})
+          INSERT INTO public.wa_conversations(account_id, phone_number_id, customer_wa_id, last_customer_at)
+          VALUES (${account?.id ?? null}::uuid, ${message.phoneId}, ${message.customer}, ${message.at})
           ON CONFLICT (phone_number_id, customer_wa_id) DO UPDATE
-          SET last_customer_at = GREATEST(wa_conversations.last_customer_at, EXCLUDED.last_customer_at), updated_at = now()
+          SET account_id = COALESCE(EXCLUDED.account_id, wa_conversations.account_id),
+              last_customer_at = GREATEST(wa_conversations.last_customer_at, EXCLUDED.last_customer_at), updated_at = now()
           RETURNING *`;
         const conversation = conversations[0];
         const inserted = await tx.$queryRaw<{ id: string }[]>`
           INSERT INTO public.wa_messages(conversation_id, external_id, direction, body, state)
           VALUES (${conversation.id}::uuid, ${message.id}, 'IN', ${message.body},
-            ${message.text && conversation.mode === 'BOT' ? 'QUEUED' : 'RECEIVED'})
+            ${message.text && conversation.mode === 'BOT' && account?.bot_mode === 'BOT' ? 'QUEUED' : 'RECEIVED'})
           ON CONFLICT (external_id) DO NOTHING RETURNING id`;
         if (inserted.length && !message.text && conversation.mode === 'BOT') {
           await tx.$executeRaw`UPDATE public.wa_conversations SET mode = 'WAITING' WHERE id = ${conversation.id}::uuid`;
@@ -63,31 +75,36 @@ export class WhatsappService {
     return { received: true };
   }
 
-  async list() {
-    const phone = this.phoneId();
+  async list(userId: string, isSuperAdmin: boolean) {
+    if (isSuperAdmin) return this.db.$queryRaw<Conversation[]>`
+      SELECT id, account_id, phone_number_id, customer_wa_id, mode, assigned_to, last_customer_at, updated_at, busy_until
+      FROM public.wa_conversations ORDER BY updated_at DESC LIMIT 100`;
     return this.db.$queryRaw<Conversation[]>`
-      SELECT id, phone_number_id, customer_wa_id, mode, assigned_to, last_customer_at, updated_at, busy_until
-      FROM public.wa_conversations WHERE phone_number_id = ${phone} ORDER BY updated_at DESC LIMIT 100`;
+      SELECT c.id, c.account_id, c.phone_number_id, c.customer_wa_id, c.mode, c.assigned_to, c.last_customer_at, c.updated_at, c.busy_until
+      FROM public.wa_conversations c JOIN public.wa_account_members m ON m.account_id = c.account_id
+      WHERE m.user_id = ${userId}::uuid ORDER BY c.updated_at DESC LIMIT 100`;
   }
 
-  async history(id: string) {
-    await this.find(id);
+  async history(id: string, userId: string, isSuperAdmin: boolean) {
+    await this.find(id, userId, isSuperAdmin);
     // Últimos 100 mensajes, ordenados cronológicamente por el panel.
     return this.db.$queryRaw<Message[]>`
       SELECT id, direction, body, state, created_at FROM public.wa_messages
       WHERE conversation_id = ${id}::uuid ORDER BY created_at DESC, id DESC LIMIT 100`;
   }
 
-  private async find(id: string): Promise<Conversation> {
-    const phone = this.phoneId();
-    const rows = await this.db.$queryRaw<Conversation[]>`
-      SELECT * FROM public.wa_conversations WHERE id = ${id}::uuid AND phone_number_id = ${phone}`;
+  private async find(id: string, userId: string, isSuperAdmin: boolean): Promise<Conversation> {
+    const rows = isSuperAdmin
+      ? await this.db.$queryRaw<Conversation[]>`SELECT * FROM public.wa_conversations WHERE id = ${id}::uuid`
+      : await this.db.$queryRaw<Conversation[]>`
+          SELECT c.* FROM public.wa_conversations c JOIN public.wa_account_members m ON m.account_id = c.account_id
+          WHERE c.id = ${id}::uuid AND m.user_id = ${userId}::uuid`;
     if (!rows.length) throw new NotFoundException('Conversación no encontrada');
     return rows[0];
   }
 
-  async setMode(id: string, mode: 'BOT' | 'HUMAN', userId: string) {
-    await this.find(id);
+  async setMode(id: string, mode: 'BOT' | 'HUMAN', userId: string, isSuperAdmin: boolean) {
+    await this.find(id, userId, isSuperAdmin);
     return this.db.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<Conversation[]>`
         UPDATE public.wa_conversations SET mode = ${mode}, assigned_to = ${mode === 'HUMAN' ? userId : null}, lease_token = NULL, updated_at = now()
@@ -115,9 +132,11 @@ export class WhatsappService {
   /** Lista sólo las bandejas que el usuario puede atender. El superadmin ve todas. */
   async accounts(userId: string, isSuperAdmin: boolean) {
     if (isSuperAdmin) return this.db.$queryRaw<WhatsappAccount[]>`
-      SELECT a.* FROM public.wa_accounts a ORDER BY a.created_at DESC`;
+      SELECT a.*, (SELECT count(*)::int FROM public.wa_account_members m WHERE m.account_id = a.id) AS member_count
+      FROM public.wa_accounts a ORDER BY a.created_at DESC`;
     return this.db.$queryRaw<WhatsappAccount[]>`
-      SELECT a.*, m.permission FROM public.wa_accounts a
+      SELECT a.*, m.permission, (SELECT count(*)::int FROM public.wa_account_members am WHERE am.account_id = a.id) AS member_count
+      FROM public.wa_accounts a
       JOIN public.wa_account_members m ON m.account_id = a.id
       WHERE m.user_id = ${userId}::uuid ORDER BY a.created_at DESC`;
   }
@@ -205,11 +224,11 @@ export class WhatsappService {
     }
   }
 
-  async manualReply(id: string, body: string, userId: string) {
-    await this.find(id);
+  async manualReply(id: string, body: string, userId: string, isSuperAdmin: boolean) {
+    await this.find(id, userId, isSuperAdmin);
     const conversation = await this.claim(id);
     try {
-      if (conversation.mode !== 'HUMAN' || conversation.assigned_to !== userId) {
+      if (conversation.mode !== 'HUMAN' || (!isSuperAdmin && conversation.assigned_to !== userId)) {
         throw new ConflictException('Toma la conversación antes de responder');
       }
       return await this.send(conversation, body, null);
@@ -219,14 +238,21 @@ export class WhatsappService {
   async processQueue() {
     // Fallar cerrado. Activar sólo después de probar el webhook, credenciales y FAQs.
     if (this.config.get('WHATSAPP_BOT_ENABLED') !== 'true') return { processed: 0, enabled: false };
-    const phone = this.phoneId();
     // Trabajos interrumpidos pasan a revisión; nunca se repite un envío incierto.
     await this.db.$executeRaw`UPDATE public.wa_messages m SET state = 'REVIEW'
-      FROM public.wa_conversations c WHERE m.conversation_id = c.id AND c.phone_number_id = ${phone}
+      FROM public.wa_conversations c WHERE m.conversation_id = c.id
       AND m.state IN ('PROCESSING', 'SENDING') AND c.busy_until <= now()`;
+    // Si se cambia una cuenta a Manual o Pausado, ningún mensaje pendiente queda
+    // oculto en la cola: queda visible para que un administrador lo atienda.
+    await this.db.$executeRaw`UPDATE public.wa_messages m SET state = 'RECEIVED'
+      FROM public.wa_conversations c JOIN public.wa_accounts a ON a.id = c.account_id
+      WHERE m.conversation_id = c.id AND m.state = 'QUEUED'
+      AND (a.status <> 'ACTIVE' OR a.bot_mode <> 'BOT')`;
     const jobs = await this.db.$queryRaw<Message[]>`
       SELECT m.* FROM public.wa_messages m JOIN public.wa_conversations c ON c.id = m.conversation_id
-      WHERE m.state = 'QUEUED' AND c.mode = 'BOT' AND c.phone_number_id = ${phone} AND c.busy_until <= now()
+      LEFT JOIN public.wa_accounts a ON a.id = c.account_id
+      WHERE m.state = 'QUEUED' AND c.mode = 'BOT' AND c.busy_until <= now()
+      AND (c.account_id IS NULL OR (a.status = 'ACTIVE' AND a.bot_mode = 'BOT'))
       ORDER BY m.created_at, m.id LIMIT 1`;
     let processed = 0;
     for (const job of jobs) {
